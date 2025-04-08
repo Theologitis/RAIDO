@@ -1,0 +1,128 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flower-app"
+version = "1.0.0"
+description = "Federated Learning project for RAIDO"
+license = "Apache-2.0"
+dependencies = [
+    
+    "flwr[simulation]>=1.15.2",
+    "flwr-datasets>=0.5.0",
+    "torch==2.5.1",
+    "scikit-learn==1.6.1",
+    "torchvision==0.20.1"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.flwr.app]
+publisher = "flwrlabs"
+
+[tool.flwr.app.components]
+serverapp = "flowerapp.server_app:app"
+clientapp = "flowerapp.client_app:app"
+
+[tool.flwr.app.config]
+data_url = ""
+num-server-rounds = 2
+model = "SimpleCNN"
+strategy = "FedAvg"
+
+# Hyperparameters
+lr = 0.01
+lr_decay = true
+batch_size = 32
+epochs = 3
+
+# Strategy Options
+fraction_fit = 1.0
+fraction_evaluate = 1.0
+min_fit_clients = 2
+min_evaluate_clients = 2
+min_available_clients = 2
+accept_failures = true
+inplace = true
+
+# FedProx
+proximal_mu = 0.01
+
+# Bulyan
+num_malicious_clients = 1
+
+# FedAvgM
+server_learning_rate = 0.01
+server_momentum = 0.7
+
+# DP FedAvg Adaptive (optional, set dp_fedavg_adaptive = true to use)
+dp_fedavg_adaptive = false  # Optional
+num_sampled_clients = 20  # Optional (only if dp_fedavg_adaptive=true)
+init_clip_norm = 0.1  # Optional (only if dp_fedavg_adaptive=true)
+noise_multiplier = 1.0  # Optional (only if dp_fedavg_adaptive=true)
+clip_norm_lr = 0.2  # Optional (only if dp_fedavg_adaptive=true)
+clip_norm_target_quantile = 0.5  # Optional (only if dp_fedavg_adaptive=true)
+clip_count_stddev = " "  # Optional (only if dp_fedavg_adaptive=true) # should be null, but toml doesn't accept
+
+# DP FedAvg Fixed (optional, set dp_fedavg_fixed = true to use)
+dp_fedavg_fixed = false  # Optional
+clip_norm = 10  # Optional (only if dp_fedavg_fixed=true)
+server_side_noising = true  # Optional (only if dp_fedavg_fixed=true)
+
+# Fault Tolerant FedAvg
+min_completion_rate_fit = 0.5  # Optional
+min_completion_rate_evaluate = 0.5  # Optional
+
+# FedAdagrad / FedOpt /FedYogi
+eta = 0.01  # Optional: Learning rate for FedAdagrad (default 0.1)
+eta_l = 0.05  # Optional: Learning rate for local updates (default 0.1)
+tau = 1e-8 # Optional: Regularization parameter (default 0)
+beta_1 = 0.9
+beta_2 = 0.99
+
+# FedTrimmedAvg
+beta = 0.2
+
+# FedXgbCyclic
+num_evaluation_clients = ""
+num_fit_cleints = ""
+
+# Optional strategy callbacks:
+evaluate_fn = ""  # Function name or path
+on_fit_config_fn = ""  # Function name or path
+on_evaluate_config_fn = ""  # Function name or path
+initial_parameters = ""  # Initial global model parameters
+fit_metrics_aggregation_fn = ""  # Aggregation function
+evaluate_metrics_aggregation_fn = "weighted_average"  # Aggregation function
+
+
+# Parameters for the DP
+dp=false
+noise-multiplier = 0.2
+clipping-norm = 10
+num-sampled-clients = 20
+
+# Parameters for the SecAgg+ protocol
+secagg=false
+num-shares = 7
+reconstruction-threshold = 4
+
+[tool.flwr.federations]
+default = "local-simulation"
+
+[tool.flwr.federations.local-simulation]
+options.num-supernodes = 2
+
+[tool.flwr.federations.local-deployment]
+address = "superlink:9093"
+insecure = true
+
+[tool.flwr.federations.local-deployment-docker]
+address = "superlink:9093"
+insecure = true
+
+[tool.flwr.federations.remote-deployment]
+address = "160.40.48.201:9093"
+root-certificates = "./distributed/superlink-certificates/ca.crt"

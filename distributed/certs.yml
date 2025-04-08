@@ -1,0 +1,5 @@
+services:
+  gen-certs:
+    build:
+      args:
+        SUPERLINK_IP: ${SUPERLINK_IP:-160.40.48.208}

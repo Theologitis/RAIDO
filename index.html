@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Federated Learning Platform</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: grey;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: rgb(26, 91, 145);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            color: white;
+        }
+        .options-list {
+            margin-top: 20px;
+            text-align: left;
+            font-size: 18px;
+        }
+        h1 {
+            font-size: 24px;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            font-size: 16px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        select, input {
+            padding: 8px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: none;
+        }
+        .output {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #7a7878;
+            border-radius: 8px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            display: none;
+        }
+        .error {
+            color: rgb(255, 0, 0);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Federation: CERTH</h1>
+
+    <!-- Dropdown to select strategy -->
+    <div>
+        <label for="strategySelect"><strong>Select Strategy:</strong></label>
+        <select id="strategySelect">
+            <option value="FedAvg">FedAvg</option>
+            <option value="FedAdam">FedAdam</option>
+            <option value="FedYogi">FedYogi</option>
+            <option value="FedProx">FedProx</option>
+            <option value="QFedAvg">QFedAvg</option>
+            <option value="Bulyan">Bulyan</option>
+            <option value="FedAvgM">FedAvgM</option>
+            <option value="DPFedAvgAdaptive">DPFedAvgAdaptive</option>
+            <option value="DPFedAvgFixed">DPFedAvgFixed</option>
+            <option value="DifferentialPrivacyClientSideAdaptiveClipping">DifferentialPrivacyClientSideAdaptiveClipping</option>
+            <option value="DifferentialPrivacyClientSideFixedClipping">DifferentialPrivacyClientSideFixedClipping</option>
+            <option value="DifferentialPrivacyServerSideAdaptiveClipping">DifferentialPrivacyServerSideAdaptiveClipping</option>
+            <option value="DifferentialPrivacyServerSideFixedClipping">DifferentialPrivacyServerSideFixedClipping</option>
+            <option value="FaultTolerantFedAvg">FaultTolerantFedAvg</option>
+            <option value="FedAdagrad">FedAdagrad</option>
+            <option value="FedAvgAndroid">FedAvgAndroid</option>
+            <option value="FedMedian">FedMedian</option>
+            <option value="FedOpt">FedOpt</option>
+            <option value="FedTrimmedAvg">FedTrimmedAvg</option>
+            <option value="FedXgbBagging">FedXgbBagging</option>
+            <option value="FedXgbCyclic">FedXgbCyclic</option>
+            <option value="FedXgbNnAvg">FedXgbNnAvg</option>
+            <option value="Krum">Krum</option>
+
+
+        </select>
+        <button id="setStrategyButton">Set Strategy</button>
+    </div>
+
+    <!-- Input to select number of epochs -->
+    <div style="margin-top: 10px;">
+        <label for="epochInput"><strong>Select Epochs:</strong></label>
+        <input type="number" id="epochInput" min="1" value="2">
+        <button id="setEpochButton">Set Epochs</button>
+    </div>
+
+    <div class="options-list">
+        <div><strong>Strategy:</strong> <span id="selectedStrategy">FedAvg</span></div>
+        <div><strong>Model:</strong> CNN </div>
+        <div><strong>Training Rounds:</strong> <span id="selectedEpochs">2</span> </div>
+        <div><strong>Local Epochs:</strong> 2 </div>
+        <div><strong>ClientsConnected:</strong> 2 / 2</div>
+    </div>
+
+    <button id="runButton">Start Federated Learning</button>
+
+    <div id="output" class="output">
+        <pre id="outputText"></pre>
+    </div>
+    <div id="error" class="error"></div>
+</div>
+
+<script>
+    // Handle setting the selected strategy
+    document.getElementById('setStrategyButton').addEventListener('click', function() {
+        const selectedStrategy = document.getElementById('strategySelect').value;
+        document.getElementById('selectedStrategy').textContent = selectedStrategy;
+    });
+
+    // Handle setting the number of epochs
+    document.getElementById('setEpochButton').addEventListener('click', function() {
+        const selectedEpochs = document.getElementById('epochInput').value;
+        document.getElementById('selectedEpochs').textContent = selectedEpochs;
+    });
+
+    // Handle starting the federated learning process
+    document.getElementById('runButton').addEventListener('click', async function() {
+        document.getElementById('output').style.display = 'block';
+        document.getElementById('outputText').textContent = '';
+        document.getElementById('error').textContent = '';
+
+        // Get the selected strategy and epochs
+        const selectedStrategy = document.getElementById('strategySelect').value;
+        const selectedEpochs = parseInt(document.getElementById('epochInput').value,10); 
+
+        // Create JSON payload to send to Flask
+        const requestData = {
+            strategy: selectedStrategy,
+            model: "SimpleCNN",
+            epochs: selectedEpochs
+   
+        };
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/run-flwr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+
+            if (!response.body) {
+                throw new Error("No response body received.");
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            function readChunk() {
+                return reader.read().then(({ done, value }) => {
+                    if (done) return;
+                    document.getElementById('outputText').textContent += decoder.decode(value);
+                    readChunk(); // Continue reading streamed logs
+                });
+            }
+
+            readChunk();
+        } catch (error) {
+            document.getElementById('error').textContent = error.message;
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+Flask==3.1.0
+flwr==1.15.2
+requests
+flask-cors
