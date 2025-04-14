@@ -122,11 +122,12 @@ def load_data_loc(client_data_path,part_id):
     ])
     
     # Create dataset instances
-    N=200
+    N=1000
     trainset = CIFAR10Custom(client_data_path, train=True,transform=transform,max_samples=N)
     testset = CIFAR10Custom(client_data_path, train=False,transform=transform,max_samples=N+100*part_id,start_index=part_id*N)
     
     return DataLoader(trainset, batch_size=32, shuffle=True), DataLoader(testset, batch_size=32)
+
 
 
 def train(model, trainloader, epochs=1,lr=0.01):
@@ -227,6 +228,5 @@ def set_weights(net, parameters):
 def get_weights(net):
     ndarrays = [val.cpu().numpy() for _, val in net.state_dict().items()]
     return ndarrays
-
 
 

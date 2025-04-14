@@ -158,11 +158,15 @@
    
         };
 
+        const controller = new AbortController(); // create a controler to prevent stream to break
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+
         try {
             const response = await fetch('http://127.0.0.1:5000/run-flwr', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
+                body: JSON.stringify(requestData),
+                signal: controller.signal
             });
 
             if (!response.body) {
@@ -174,15 +178,26 @@
 
             function readChunk() {
                 return reader.read().then(({ done, value }) => {
-                    if (done) return;
-                    document.getElementById('outputText').textContent += decoder.decode(value);
-                    readChunk(); // Continue reading streamed logs
+                    if (done) {
+                        clearTimeout(timeoutId);
+                        reader.cancel()
+                    return
+                }
+               
+
+                document.getElementById('outputText').textContent += decoder.decode(value);
+                readChunk(); // Continue reading streamed logs
                 });
             }
 
             readChunk();
         } catch (error) {
-            document.getElementById('error').textContent = error.message;
+            if (error.name === 'AbortError') {
+                document.getElementById('error').textContent = "The operation timed out.";
+            } else {
+                document.getElementById('error').textContent = error.message;
+            }
+        
         }
     });
 </script>

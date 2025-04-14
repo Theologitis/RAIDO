@@ -1,63 +1,3 @@
-# # from flask import Flask, jsonify, request
-# # import subprocess
-# # from flask_cors import CORS  # Import CORS
-
-# # app = Flask(__name__)
-# # CORS(app)
-
-# # @app.route('/run-flwr', methods=['POST'])
-# # def run_flwr():
-# #     try:
-# #         # Run the flwr command as a subprocess
-# #         result = subprocess.run(['flwr', 'run', 'fl-tabular', 'local-deployment-docker', '--stream'],
-# #                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-# #         # Capture stdout and stderr
-# #         output = result.stdout + '\n' + result.stderr
-# #         return jsonify({'status': 'success', 'output': output}), 200
-# #     except Exception as e:
-# #         return jsonify({'status': 'error', 'message': str(e)}), 500
-
-# # if __name__ == '__main__':
-# #     app.run(host='0.0.0.0', port=5000)
-
-# ## FOR REAL TIME PROGRESS MESSAGES ##
-# from flask import Flask, jsonify, request, Response
-# import subprocess
-# from flask_cors import CORS
-
-# app = Flask(__name__)
-# CORS(app)
-
-# def generate_flwr_logs():
-#     """Stream Flower logs in real-time."""
-#     process = subprocess.Popen(
-#         ['flwr', 'run', 'flower-app', 'local-deployment-docker', '--stream'],
-#         stdout=subprocess.PIPE,
-#         stderr=subprocess.STDOUT,  # Merge stderr into stdout
-#         text=True,
-#         bufsize=1,  # Line-buffered output
-#     )
-#     for line in iter(process.stdout.readline, ''):
-#         yield line  # Send each line as it appears
-#     process.stdout.close()
-#     process.wait()
-
-# @app.route('/run-flwr', methods=['POST'])
-# def run_flwr():
-#     """Start Flower run and stream logs."""
-#     return Response(generate_flwr_logs(), mimetype='text/plain')
-
-# # @app.route('/flwr-ls',methods=['POST'])
-# # def ls_flwr():
-# #     return
-
-# # @app.route('/flwr-log',methods=['POST'])
-# # def log_flwr():
-# #     return
-
-# if __name__ == '__main__':
-#     app.run(host='0.0.0.0', port=5000, threaded=True)
 from flask import Flask, jsonify, request, Response
 import subprocess
 import re
@@ -65,21 +5,25 @@ from flask_cors import CORS
 import os
 app = Flask(__name__)
 CORS(app) # otherwise stream is not returned at index or master (?) 
+## code for https version if needed
 # @app.before_request
 # def redirect_to_https():
 #     if not request.is_secure:
 #         url = request.url.replace("http://", "https://", 1)
 #         return jsonify({"message": "Redirecting to HTTPS", "redirect": url}), 301
+
+#####
+active_runs = {"run_id": None}
 # Function to clean and escape the logs
 def clean_log_output(log_text):
     """Remove ANSI color codes, emojis, and special characters."""
     # Remove ANSI escape sequences for colors
     clean_text = re.sub(r'\x1b\[[0-9;]*[mGKH]', '', log_text)
-    
     # Remove emojis (any non-ASCII characters)
     clean_text = re.sub(r'[^\x00-\x7F]+', '', clean_text)  # Remove non-ASCII characters
 
     return clean_text
+
 import re
 
 def read_runid(log_text):
@@ -87,13 +31,14 @@ def read_runid(log_text):
     if match:
         return match.group(1)
     return None
+
 def format_flwr_input(data):
     for key, value in data.items():
         if isinstance(value,str):
             data[key]=f"'{value}'"
     return " ".join(f"{key}={value}" for key, value in data.items()) 
 
-def flwr_stop(run_id,env):
+def stop_run(run_id,env):
     process = subprocess.Popen(
         ['flwr', 'stop', f'{run_id}'],
         stdout=subprocess.PIPE,
@@ -102,6 +47,7 @@ def flwr_stop(run_id,env):
         bufsize=1,
         env=env  # Line-buffered output
     )
+
 
 # Generator to stream the Flower logs
 def generate_flwr_logs(inputs):
@@ -118,7 +64,10 @@ def generate_flwr_logs(inputs):
         env=env  # Line-buffered output
     )
     for line in iter(process.stdout.readline, ''):
-        clean_line = clean_log_output(line)  # Clean the log line before sending
+        run_id_match = re.search(r'run_id.*?(\d+)', line) # catch run_id from stream
+        if run_id_match:
+            active_runs["run_id"] = run_id_match.group(1)
+            print(f"[INFO] Captured run_id: {active_runs['run_id']}")
         yield line  # Send each cleaned line as it appears
     process.stdout.close()
     process.wait()
@@ -149,12 +98,27 @@ def run_flwr():
     except Exception as e:
         return f"Error: {str(e)}", 500
 
-# def run_flwr():
-#     # data = request.get_json()  # Extract JSON data from reques
-#     data = {"epochs": 5, "learning_rate": 0.01, "batch_size": 32}
-#     input=format_flwr_input(data)
-#     return Response(generate_flwr_logs(input), mimetype='text/plain')
-# @app.route('/flwr-ls', methods=['POST'])
+# @app.route('/stop-flwr', methods=['POST'])
+# def stop_flwr():
+#     try:
+#         run_id = active_runs.get("run_id")
+#         if not run_id:
+#             return jsonify({"message": "No active run_id to stop"}), 400
+        
+#         env = os.environ.copy()
+#         process = subprocess.Popen(
+#             ['flwr', 'stop', f'{run_id}'],
+#             stdout=subprocess.PIPE,
+#             stderr=subprocess.STDOUT,
+#             text=True,
+#             bufsize=1,
+#             env=env
+#         )
+#         output, _ = process.communicate(timeout=10)
+#         return jsonify({"message": f"Run {run_id} stopped successfully", "log": output}), 200
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+
 # def ls_flwr():
 #     return
 

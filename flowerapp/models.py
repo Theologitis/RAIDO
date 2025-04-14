@@ -41,7 +41,7 @@ class CNNModel1(nn.Module):
         return self.fc3(x)
 
 class SimpleCNN(nn.Module):
-    def __init__(self, input_dim=16 * 5 * 5, hidden_dims=[64, 32], output_dim=10):
+    def __init__(self, input_dim=16 * 5 * 5, hidden_dims=[120, 84], output_dim=10):
         super(SimpleCNN, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 5)
         self.pool = nn.MaxPool2d(2, 2)

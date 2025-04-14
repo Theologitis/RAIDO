@@ -1,5 +1,6 @@
 from flwr.client import ClientApp, NumPyClient
 from flwr.common import Context, ConfigsRecord
+from flwr.client.mod import fixedclipping_mod, secaggplus_mod
 import random, json
 import torch
 from flowerapp.task import (
@@ -14,17 +15,14 @@ from flowerapp.task import (
 class FlowerClient(NumPyClient):
     " Default class of Flower: implements client logic, inherits from NumpyClient"
     
-    def __init__(self, net, trainloader, testloader,epochs,context: Context,lr):
-        self.client_state = context.state
+    def __init__(self, net, trainloader, testloader,epochs,lr,context):
+        self.context=context
         self.net = net
         self.trainloader = trainloader
         self.testloader = testloader
         self.local_epochs = epochs
         self.device= torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.lr=lr
-        
-        if "eval_metrics" not in self.client_state.configs_records:
-            self.client_state.configs_records["eval_metrics"] = ConfigsRecord()
         
     def fit(self, parameters, config):
         print('Training...')
@@ -74,7 +72,12 @@ def client_fn(context: Context):
     net.to(device)
     epochs=context.run_config["epochs"]
     lr=context.run_config["lr"]
-    
-    return FlowerClient(net, train_loader, test_loader,epochs,context,lr).to_client()
+    return FlowerClient(net, train_loader, test_loader,epochs,lr,context).to_client()
 
-app = ClientApp(client_fn=client_fn)
+app = ClientApp(
+    client_fn=client_fn,
+    mods=[
+        #secaggplus_mod,
+        #fixedclipping_mod,
+    ],
+)

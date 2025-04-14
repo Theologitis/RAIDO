@@ -1,5 +1,4 @@
 """fltabular: Flower Example on Adult Census Income Tabular Dataset."""
-
 from flwr.common import ndarrays_to_parameters, Metrics, Context
 from flwr.server import ServerApp, ServerConfig, ServerAppComponents
 from flwr.common import Context
@@ -8,46 +7,11 @@ from flowerapp.task import get_weights, set_weights, test, get_model_class
 from typing import List, Tuple
 import json
 import importlib
-from flwr.server.strategy import (
-    Bulyan,
-    DPFedAvgAdaptive,
-    DPFedAvgFixed,
-    DifferentialPrivacyClientSideAdaptiveClipping,
-    DifferentialPrivacyClientSideFixedClipping,
-    DifferentialPrivacyServerSideAdaptiveClipping,
-    DifferentialPrivacyServerSideFixedClipping,
-    FaultTolerantFedAvg,
-    FedAdagrad,
-    FedAdam,
-    FedAvg,
-    FedAvgAndroid,
-    FedAvgM,
-    FedMedian,
-    FedOpt,
-    FedProx,
-    FedTrimmedAvg,
-    FedXgbBagging,
-    FedXgbCyclic,
-    FedXgbNnAvg,
-    FedYogi,
-    Krum,
-    QFedAvg,
-    Strategy,
-)
-from flowerapp.custom_strategy import CustomStrategy 
+from flowerapp.custom_strategy import CustomStrategy
+from flwr.server.strategy import DifferentialPrivacyClientSideFixedClipping
+import inspect
+import flwr.server.strategy.fedavg
 
-# def get_strategy(strategy_name: str, **kwargs):
-#     """Dynamically instantiate a strategy given its name."""
-#     try:
-#         strategy_class = globals().get(strategy_name)  # Get class from global namespace
-#         if strategy_class and issubclass(strategy_class, Strategy):
-#             return strategy_class(**kwargs)  # Instantiate with provided kwargs
-#         else:
-#             raise ValueError(f"Invalid strategy: {strategy_name}")
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         return None
-    
 def get_function_from_string(func_name):
     """Dynamically get a function from its name."""
     if not func_name:
@@ -81,7 +45,7 @@ def on_fit_config(server_round: int)-> Metrics:
     # for this to work, update config object at client up
     lr = 0.01
     if server_round > 2:
-        lr = 0.005
+        lr = 0.005   
     return {"lr":lr}
 
 def get_evaluate_fn(testloader, device):
@@ -105,170 +69,94 @@ def handle_fit_metrics(metrics: List[Tuple[int,Metrics]])-> Metrics:
     return {"max_b":max(b_values)}
 
 
+# from functools import lru_cache
+# @lru_cache(maxsize=None) # for heavy loads and multiple users
+def get_strategy(strategy_name: str):
+    module = __import__("flwr.server.strategy", fromlist=[strategy_name])
+    return getattr(module, strategy_name)
 
-# def server_fn(context: Context) -> ServerAppComponents:
-#     #initalize global model
-#     net=get_model_class(context.run_config["model"])
-#     params = ndarrays_to_parameters(get_weights(net))
-
-
-#     # Retrieve function names from configuration
-#     eval_fn_name = context.run_config.get("evaluate_fn", "")
-#     fit_fn_name = context.run_config.get("on_fit_config_fn", "")
-#     eval_config_fn_name = context.run_config.get("on_evaluate_config_fn", "")
-#     evaluate_metrics_aggregation_fn_name=context.run_config.get("evaluate_metrics_aggregation_fn", "")
+app = ServerApp()
+from flwr.common import Context, Metrics, ndarrays_to_parameters
+from flwr.server import Grid, LegacyContext, ServerApp, ServerConfig
+from flwr.server.strategy import DifferentialPrivacyClientSideFixedClipping
+from flwr.server.workflow import DefaultWorkflow, SecAggPlusWorkflow
+import torch
+@app.main()
+def main(grid: Grid, context: Context) -> None:
     
-#     # Dynamically get the functions (if they exist)
-#     eval_fn = get_function_from_string(eval_fn_name)
-#     fit_config_fn = get_function_from_string(fit_fn_name)
-#     eval_config_fn = get_function_from_string(eval_config_fn_name)
-#     evaluate_metrics_aggregation_fn=get_function_from_string(evaluate_metrics_aggregation_fn_name)
-#     strategy_name = context.run_config["strategy"]
-#     strategy_opts = {'initial_parameters':params,
-#                      'evaluate_metrics_aggregation_fn':weighted_average}
-    
-#     strategy = get_strategy(strategy_name, **strategy_opts)
-
-#     strategy = CustomStrategy(strategy=strategy)
-#     num_rounds = context.run_config["num-server-rounds"] # options under app.config become available at context.run_config
-    
-#     config = ServerConfig(num_rounds=num_rounds)
-    
-#     return ServerAppComponents(config=config, strategy=strategy)
-
-# def server_fn(context: Context) -> ServerAppComponents:
-#     # Initialize global model
-#     net = get_model_class(context.run_config["model"])
-#     params = ndarrays_to_parameters(get_weights(net))
-
-#     # Collect all optional strategy arguments from config
-#     optional_strategy_keys = [
-#         "evaluate_fn",
-#         "on_fit_config_fn",
-#         "on_evaluate_config_fn",
-#         "initial_parameters",
-#         "fit_metrics_aggregation_fn",
-#         "evaluate_metrics_aggregation_fn",
-#         "fraction_fit",
-#         "fraction_evaluate",
-#         "min_fit_clients",
-#         "min_evaluate_clients",
-#         "min_available_clients",
-#         "accept_failures",
-#         "inplace",
-#         "proximal_mu"
-        
-#     ]
-
-#     strategy_opts = {}
-
-#     for key in optional_strategy_keys:
-#         value = context.run_config.get(key, None)
-
-#         # Convert string to actual function if it's a function path/name
-#         if key.endswith("_fn") or "aggregation_fn" in key:
-#             value = get_function_from_string(value) if value else None
-
-#         # Skip if the value is empty or None
-#         if value not in ("", None):
-#             strategy_opts[key] = value
-
-#     # Always include the initial model parameters
-#     strategy_opts["initial_parameters"] = params
-
-#     # Get strategy class and instantiate it
-#     strategy_name = context.run_config["strategy"]
-#     strategy = get_strategy(strategy_name, **strategy_opts)
-
-#     # Wrap it if needed in a custom strategy
-#     strategy = CustomStrategy(strategy=strategy)
-
-#     num_rounds = context.run_config["num-server-rounds"]
-
-#     config = ServerConfig(num_rounds=num_rounds)
-
-#     return ServerAppComponents(config=config, strategy=strategy)
-import flwr
-def get_strategy(name: str, return_class: bool = False, **kwargs):
-    
-    strategies = {
-        "Bulyan": flwr.server.strategy.Bulyan,
-        "DPFedAvgAdaptive": flwr.server.strategy.DPFedAvgAdaptive,
-        "DPFedAvgFixed": flwr.server.strategy.DPFedAvgFixed,
-        "DifferentialPrivacyClientSideAdaptiveClipping": flwr.server.strategy.DifferentialPrivacyClientSideAdaptiveClipping,
-        "DifferentialPrivacyClientSideFixedClipping": flwr.server.strategy.DifferentialPrivacyClientSideFixedClipping,
-        "DifferentialPrivacyServerSideAdaptiveClipping": flwr.server.strategy.DifferentialPrivacyServerSideAdaptiveClipping,
-        "DifferentialPrivacyServerSideFixedClipping": flwr.server.strategy.DifferentialPrivacyServerSideFixedClipping,
-        "FaultTolerantFedAvg": flwr.server.strategy.FaultTolerantFedAvg,
-        "FedAdagrad": flwr.server.strategy.FedAdagrad,
-        "FedAdam": flwr.server.strategy.FedAdam,
-        "FedAvg": flwr.server.strategy.FedAvg,
-        "FedAvgAndroid": flwr.server.strategy.FedAvgAndroid,
-        "FedAvgM": flwr.server.strategy.FedAvgM,
-        "FedMedian": flwr.server.strategy.FedMedian,
-        "FedOpt": flwr.server.strategy.FedOpt,
-        "FedProx": flwr.server.strategy.FedProx,
-        "FedTrimmedAvg": flwr.server.strategy.FedTrimmedAvg,
-        "FedXgbBagging": flwr.server.strategy.FedXgbBagging,
-        "FedXgbCyclic": flwr.server.strategy.FedXgbCyclic,
-        "FedXgbNnAvg": flwr.server.strategy.FedXgbNnAvg,
-        "FedYogi": flwr.server.strategy.FedYogi,
-        "Krum": flwr.server.strategy.Krum,
-        "QFedAvg": flwr.server.strategy.QFedAvg,
-        # Add more strategies here
-    }
-    cls = strategies.get(name)
-    if return_class:
-        return cls
-    if cls is None:
-        raise ValueError(f"Unknown strategy: {name}")
-    return cls(**kwargs)
-
-import inspect
-
-def server_fn(context: Context) -> ServerAppComponents:
-    # Initialize model and parameters
+    # Initialize global model
     net = get_model_class(context.run_config["model"])
+    model_dict = True if context.run_config["model_dict"].lower()=="true" else False
     params = ndarrays_to_parameters(get_weights(net))
-
+    if model_dict:
+        PATH = context.run_config["model_dict_path"]
+        net.load_state_dict(torch.load(PATH, weights_only=True))
+        params=ndarrays_to_parameters(get_weights(net))
+    else:
+        params = ndarrays_to_parameters(get_weights(net))
+        
+    # Initialize Strategy    
     strategy_name = context.run_config["strategy"]
-
-    # Step 1: Get the actual strategy class (not an instance)
-    strategy_cls = get_strategy(strategy_name, return_class=True)  # You'll need to update get_strategy to support this
-
-    # Step 2: Get the accepted parameter names for the constructor
+    strategy_cls = get_strategy(strategy_name)
     sig = inspect.signature(strategy_cls.__init__)
     valid_params = set(sig.parameters.keys()) - {"self"}
-
-    # Step 3: Build filtered strategy options from context.run_config
     strategy_opts = {}
-
     for key, value in context.run_config.items():
         if key in valid_params:
-            # Convert strings representing functions to actual callables
             if key.endswith("_fn") or "aggregation_fn" in key:
                 value = get_function_from_string(value) if value else None
-
-            # Pass only valid, non-empty values
+                
             if value not in (None, "", "null"):
                 strategy_opts[key] = value
-
-    # Always override initial_parameters
     strategy_opts["initial_parameters"] = params
-
-    # Step 4: Instantiate strategy
     try:
-        strategy = strategy_cls(**strategy_opts)
+        strategy = strategy_cls(**strategy_opts,
+                                evaluate_metrics_aggregation_fn=weighted_average,
+                                )
     except Exception as e:
         raise RuntimeError(f"Failed to initialize strategy '{strategy_name}' with args {strategy_opts}: {e}")
-
-    # Step 5: Wrap with CustomStrategy if needed
-    strategy = CustomStrategy(strategy=strategy)
-
-    # Step 6: Build server config
     num_rounds = context.run_config["num-server-rounds"]
-    config = ServerConfig(num_rounds=num_rounds)
+    # Wrap with custom messages for strategies
+    strategy = CustomStrategy(strategy=strategy,num_rounds=num_rounds,model=context.run_config["model"],context=context)
 
-    return ServerAppComponents(config=config, strategy=strategy)
 
-app = ServerApp(server_fn=server_fn)
+    # enable Differential Privacy if set in the configurations:
+    dp = True if context.run_config["dp"].lower()=="true" else False
+    if dp:
+        noise_multiplier = context.run_config["noise-multiplier"]
+        clipping_norm = context.run_config["clipping-norm"]
+        print(clipping_norm)
+        num_sampled_clients = context.run_config["num-sampled-clients"]
+        
+        strategy = DifferentialPrivacyClientSideFixedClipping(
+            strategy,
+            noise_multiplier=noise_multiplier,
+            clipping_norm=clipping_norm,
+            num_sampled_clients=num_sampled_clients
+        )
+        
+ 
+    
+    # Construct the LegacyContext
+    context = LegacyContext(
+        context=context,
+        config=ServerConfig(num_rounds=num_rounds),
+        strategy=strategy,
+    )
+
+    # Create the train/evaluate workflow
+    # create secure aggregation workflow if set in the configs.
+    sec_agg=True if context.run_config["sec-agg"].lower()=="true" else False
+    print(sec_agg)
+    if sec_agg:
+        workflow = DefaultWorkflow(
+                fit_workflow=SecAggPlusWorkflow(
+                num_shares=context.run_config["num-shares"],
+                reconstruction_threshold=context.run_config["reconstruction-threshold"],
+            )
+        )
+    else:
+        workflow = DefaultWorkflow()
+    
+    # Execute
+    workflow(grid, context)
