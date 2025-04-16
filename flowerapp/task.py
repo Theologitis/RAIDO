@@ -1,5 +1,4 @@
 """fltabular: Flower Example on Adult Census Income Tabular Dataset."""
-
 from collections import OrderedDict
 import torch
 import torch.nn as nn
@@ -126,97 +125,95 @@ def load_data_loc(client_data_path,part_id):
     trainset = CIFAR10Custom(client_data_path, train=True,transform=transform,max_samples=N)
     testset = CIFAR10Custom(client_data_path, train=False,transform=transform,max_samples=N+100*part_id,start_index=part_id*N)
     
-    return DataLoader(trainset, batch_size=32, shuffle=True), DataLoader(testset, batch_size=32)
+    return DataLoader(trainset, batch_size=256, shuffle=True), DataLoader(testset, batch_size=32)
 
 
-
-def train(model, trainloader, epochs=1,lr=0.01):
-    """
-    Trains the model on the provided data and tracks metrics.
+# def train(model, trainloader, epochs=1,device="cpu",lr=0.01):
+#     """
+#     Trains the model on the provided data and tracks metrics.
     
-    Args:
-        model (nn.Module): Neural network model to train
-        trainloader (DataLoader): DataLoader containing training data
-        epochs (int): Number of training epochs
+#     Args:
+#         model (nn.Module): Neural network model to train
+#         trainloader (DataLoader): DataLoader containing training data
+#         epochs (int): Number of training epochs
     
-    Returns:
-        list: List of tuples containing (loss, accuracy) for each epoch
-    """
+#     Returns:
+#         list: List of tuples containing (loss, accuracy) for each epoch
+#     """
+#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#     print(f"Number of GPUs: {torch.cuda.device_count()}")
+#     model.to(device)
     
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Number of GPUs: {torch.cuda.device_count()}")
-    model.to(device)
+#     loss_fn = nn.CrossEntropyLoss() # Define loss function
+#     optimizer = optim.Adam(model.parameters(), lr) # Define optimizer and learning rate
     
-    loss_fn = nn.CrossEntropyLoss() # Define loss function
-    optimizer = optim.Adam(model.parameters(), lr) # Define optimizer and learning rate
+#     model.train()
+#     all_metrics = []
+    
+#     for epoch in range(epochs): # Training loop over epochs
+#         running_loss = 0.0
+#         correct = 0
+#         total = 0
+        
+#         for inputs, labels in trainloader: # Batch training loop
+#             print(type(inputs), inputs.shape)
+#             inputs, labels = inputs.to(device), labels.to(device) # Move data to the same device as the model (GPU/CPU)
    
-    model.train()
-    all_metrics = []
-    
-    for epoch in range(epochs): # Training loop over epochs
-        running_loss = 0.0
-        correct = 0
-        total = 0
+#             # Forward pass
+#             outputs = model(inputs)
+#             loss = loss_fn(outputs, labels)
+            
+#             # Backward pass and optimization
+#             optimizer.zero_grad() # Clear previous gradients
+#             loss.backward()       # Compute gradients
+#             optimizer.step()      # Update weights
+            
+#             # Track metrics
+#             running_loss += loss.item()
+#             _, predicted = torch.max(outputs, 1)
+#             correct += (predicted == labels).sum().item()
+#             total += labels.size(0)
         
-        for inputs, labels in trainloader: # Batch training loop
-
-            inputs, labels = inputs.to(device), labels.to(device) # Move data to the same device as the model (GPU/CPU)
-            
-            # Forward pass
-            outputs = model(inputs)
-            loss = loss_fn(outputs, labels)
-            
-            # Backward pass and optimization
-            optimizer.zero_grad() # Clear previous gradients
-            loss.backward()       # Compute gradients
-            optimizer.step()      # Update weights
-            
-            # Track metrics
-            running_loss += loss.item()
-            _, predicted = torch.max(outputs, 1)
-            correct += (predicted == labels).sum().item()
-            total += labels.size(0)
+#         # Calculate epoch metrics
+#         epoch_loss = running_loss / len(trainloader)
+#         epoch_accuracy = 100 * correct / total
         
-        # Calculate epoch metrics
-        epoch_loss = running_loss / len(trainloader)
-        epoch_accuracy = 100 * correct / total
-        
-        # Store and print metrics
-        all_metrics.append((epoch_loss, epoch_accuracy))        
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.2f}%")
-    # model.cpu()
-    return all_metrics
+#         # Store and print metrics
+#         all_metrics.append((epoch_loss, epoch_accuracy))        
+#         print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.2f}%")
+#     # model.cpu()
+#     return all_metrics
 
 
-def test(net, testloader):
-    """
-    Evaluates the model on test data.
+# def test(net, testloader,device):
+#     """
+#     Evaluates the model on test data.
     
-    Args:
-        net (nn.Module): Neural network model to evaluate
-        testloader (DataLoader): DataLoader containing test data
+#     Args:
+#         net (nn.Module): Neural network model to evaluate
+#         testloader (DataLoader): DataLoader containing test data
     
-    Returns:
-        tuple: (average_loss, accuracy)
-    """
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    net.to(DEVICE)
+#     Returns:
+#         tuple: (average_loss, accuracy)
+#     """
+#     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#     net.to(DEVICE)
     
-    criterion = torch.nn.CrossEntropyLoss()
-    correct = 0
-    total = 0
-    loss = 0.0
+#     criterion = torch.nn.CrossEntropyLoss()
+#     correct = 0
+#     total = 0
+#     loss = 0.0
 
-    # Disable gradient computation for evaluation
-    with torch.no_grad():
-        for images, labels in testloader:
-            images, labels = images.to(DEVICE), labels.to(DEVICE) # Move data to the same device as the model (GPU/CPU)  
-            outputs = net(images) # Forward pass
-            loss += criterion(outputs, labels).item() # Accumulate loss
-            total += labels.size(0) # Track accuracy
-            correct += (torch.max(outputs.data, 1)[1] == labels).sum().item()
+#     # Disable gradient computation for evaluation
+#     with torch.no_grad():
+#         for images, labels in testloader:
+#             images, labels = images.to(DEVICE), labels.to(DEVICE) # Move data to the same device as the model (GPU/CPU)  
+#             outputs = net(images) # Forward pass
+#             loss += criterion(outputs, labels).item() # Accumulate loss
+#             total += labels.size(0) # Track accuracy
+#             correct += (torch.max(outputs.data, 1)[1] == labels).sum().item()
             
-    return loss /len(testloader.dataset), correct / total
+#     return loss /len(testloader.dataset), correct / total
 
 
 def set_weights(net, parameters):
@@ -230,3 +227,75 @@ def get_weights(net):
     return ndarrays
 
 
+from flwr_datasets import FederatedDataset
+from flwr_datasets.partitioner import IidPartitioner
+
+fds = None
+
+def load_data_sim(partition_id: int, num_partitions: int , batch_size):
+    """Load partition CIFAR10 data."""
+    # Only initialize `FederatedDataset` once
+    global fds
+    if fds is None:
+        partitioner = IidPartitioner(num_partitions=num_partitions)
+        fds = FederatedDataset(
+            dataset="uoft-cs/cifar10",
+            partitioners={"train": partitioner},
+        )
+    partition = fds.load_partition(partition_id)
+    # Divide data on each node: 80% train, 20% test
+    partition_train_test = partition.train_test_split(test_size=0.2, seed=42)
+    pytorch_transforms = Compose(
+        [ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    )
+
+    def apply_transforms(batch):
+        """Apply transforms to the partition from FederatedDataset."""
+        batch["img"] = torch.stack([pytorch_transforms(img) for img in batch["img"]])
+        batch["label"] = torch.tensor(batch["label"])
+        return batch
+
+    partition_train_test = partition_train_test.with_transform(apply_transforms)
+    trainloader = DataLoader(partition_train_test["train"], batch_size=batch_size, shuffle=True)
+    testloader = DataLoader(partition_train_test["test"], batch_size=batch_size)
+    return trainloader, testloader
+
+def train(net, trainloader, epochs, device,lr):
+    """Train the model on the training set."""
+    net.to(device)  # move model to GPU if available
+    criterion = torch.nn.CrossEntropyLoss().to(device)
+    optimizer = torch.optim.Adam(net.parameters(), lr=lr)
+    print(device)
+    net.train()
+    running_loss = 0.0
+    for _ in range(epochs):
+        for batch in trainloader:
+            images = batch["img"].to(device)
+            labels = batch["label"].to(device)
+            optimizer.zero_grad()
+            loss = criterion(net(images), labels)
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+        print(running_loss/len(trainloader))
+            
+    avg_trainloss = running_loss / len(trainloader)
+  
+    return avg_trainloss
+
+
+def test(net, testloader, device):
+    """Validate the model on the test set."""
+    net.to(device)
+    criterion = torch.nn.CrossEntropyLoss()
+    correct, loss = 0, 0.0
+    with torch.no_grad():
+        for batch in testloader:
+            images = batch["img"].to(device)
+            labels = batch["label"].to(device)
+            outputs = net(images)
+            loss += criterion(outputs, labels).item()
+            correct += (torch.max(outputs.data, 1)[1] == labels).sum().item()
+    accuracy = correct / len(testloader.dataset)
+    loss = loss / len(testloader)
+    return loss, accuracy

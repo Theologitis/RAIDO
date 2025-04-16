@@ -1,7 +1,7 @@
 services:
   # create a SuperLink service
   superlink:
-    image: flwr/superlink:${FLWR_VERSION:-1.15.2}
+    image: flwr/superlink:${FLWR_VERSION:-1.17.0}
     container_name: SuperLink
     environment:
       - FLWR_LOG_LEVEL=ERROR
@@ -17,7 +17,7 @@ services:
     build:
       context: ${PROJECT_DIR:-../}
       dockerfile_inline: |
-        FROM flwr_serverapp:0.0.2
+        FROM flwr-server:1.17.0
 
         # gcc is required for the fastai quickstart example
         USER root
@@ -38,47 +38,49 @@ services:
       - --serverappio-api-address
       - superlink:9091
     restart: on-failure:3
+    volumes:
+      - "../output:/app/output"
     environment:
       - FLWR_LOG_LEVEL=ERROR
     container_name: ServerApp-1
     depends_on:
       - superlink
 
-  serverapp-2:
-    build:
-      context: ${PROJECT_DIR:-../}
-      dockerfile_inline: |
-        FROM flwr_serverapp:0.0.2
+  # serverapp-2:
+  #   build:
+  #     context: ${PROJECT_DIR:-../}
+  #     dockerfile_inline: |
+  #       FROM flwr_server:1.17.0
 
-        # gcc is required for the fastai quickstart example
-        USER root
-        RUN apt-get update \
-            && apt-get -y --no-install-recommends install \
-            build-essential \
-            && rm -rf /var/lib/apt/lists/*
-        USER app
+  #       # gcc is required for the fastai quickstart example
+  #       USER root
+  #       RUN apt-get update \
+  #           && apt-get -y --no-install-recommends install \
+  #           build-essential \
+  #           && rm -rf /var/lib/apt/lists/*
+  #       USER app
 
-        WORKDIR /app
-        COPY --chown=app:app pyproject.toml .
-        RUN sed -i 's/.*flwr\[simulation\].*//' pyproject.toml \
-          && python -m pip install -U --no-cache-dir .
+  #       WORKDIR /app
+  #       COPY --chown=app:app pyproject.toml .
+  #       RUN sed -i 's/.*flwr\[simulation\].*//' pyproject.toml \
+  #         && python -m pip install -U --no-cache-dir .
 
-        ENTRYPOINT ["flwr-serverapp"]
-    command:
-      - --insecure
-      - --serverappio-api-address
-      - superlink:9091
-    restart: on-failure:3
-    environment:
-      - FLWR_LOG_LEVEL=ERROR
-    container_name: ServerApp-2
-    depends_on:
-      - superlink
+  #       ENTRYPOINT ["flwr-serverapp"]
+  #   command:
+  #     - --insecure
+  #     - --serverappio-api-address
+  #     - superlink:9091
+  #   restart: on-failure:3
+  #   environment:
+  #     - FLWR_LOG_LEVEL=ERROR
+  #   container_name: ServerApp-2
+  #   depends_on:
+  #     - superlink
 
   
   # create two SuperNode services with different node configs
   supernode-1:
-    image: flwr/supernode:${FLWR_VERSION:-1.15.2}
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
     container_name: SuperNode-A
     command:
       - --insecure
@@ -94,7 +96,7 @@ services:
       - superlink
 
   supernode-2:
-    image: flwr/supernode:${FLWR_VERSION:-1.15.2}
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
     container_name: SuperNode-B
     command:
       - --insecure
@@ -128,25 +130,7 @@ services:
 
   # create two ClientApp services
   clientapp-1:
-    build:
-      context: ${PROJECT_DIR:-../}
-      dockerfile_inline: |
-       FROM theolo0204/raido:latest
-
-        # gcc is required for the fastai quickstart example
-        USER root
-        RUN apt-get update \
-            && apt-get -y --no-install-recommends install \
-            build-essential \
-            && rm -rf /var/lib/apt/lists/*
-        USER app
-
-        WORKDIR /app
-        COPY --chown=app:app pyproject.toml .
-        RUN sed -i 's/.*flwr\[simulation\].*//' pyproject.toml \
-           && python -m pip install -U --no-cache-dir .
-
-        ENTRYPOINT ["flwr-clientapp"]
+    image: flwr-client:1.17.0
     volumes:
       - "../client_1/data:/app/data"  # Private Dataset client 1
     command:
@@ -157,7 +141,7 @@ services:
       resources:
         limits:
           cpus: "16"
-          memory: "2GB"
+          #memory: "2GB"
         reservations:
           devices:
             - driver: nvidia
@@ -173,27 +157,7 @@ services:
       - supernode-1
 
   clientapp-2:
-    build:
-      context: ${PROJECT_DIR:-../}
-
-      dockerfile_inline: |
-        FROM theolo0204/raido:latest
-
-
-        # gcc is required for the fastai quickstart example
-        USER root
-        RUN apt-get update \
-            && apt-get -y --no-install-recommends install \
-            build-essential \
-            && rm -rf /var/lib/apt/lists/*
-        USER app
-
-        WORKDIR /app
-        COPY --chown=app:app pyproject.toml .
-        RUN sed -i 's/.*flwr\[simulation\].*//' pyproject.toml \
-          && python -m pip install -U --no-cache-dir .
-
-        ENTRYPOINT ["flwr-clientapp"]
+    image: flwr-client:1.17.0
     volumes:
       - "../client_2/data:/app/data"  # Private Dataset client 2
     command:
@@ -204,7 +168,7 @@ services:
       resources:
         limits:
           cpus: "16"
-          memory: "2GB"
+          #memory: "2GB"
         reservations:
           devices:
             - driver: nvidia

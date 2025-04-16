@@ -28,16 +28,14 @@ clientapp = "flowerapp.client_app:app"
 
 [tool.flwr.app.config]
 data_url = ""
-num-server-rounds = 1
-model = "SimpleCNN"
+num-server-rounds = 2
+model = "ResNetModel"
 model_dict="true"
 model_dict_path="output/global_model.pth"
 # Hyperparameters
 epochs = 10
-lr = 0.01
-lr_decay = "true"
-lr_new = 0.005
-batch_size = 32
+lr = 0.001
+batch_size = 256
 strategy = "FedAvg"
 # Strategy Options
 fraction_fit = 1.0
@@ -47,6 +45,10 @@ min_evaluate_clients = 2
 min_available_clients = 2
 accept_failures = true
 inplace = true
+# FedAvgPlus
+lr_new = 0.0005
+epochs_new = 2
+decay_round = 1
 # FedProx
 proximal_mu = 0.01
 # Bulyan
@@ -54,23 +56,22 @@ num_malicious_clients = 1
 # FedAvgM
 server_learning_rate = 0.01
 server_momentum = 0.7
-# DP FedAvg Adaptive (optional, set dp_fedavg_adaptive = true to use)
-dp_fedavg_adaptive = false  # Optional
-num_sampled_clients = 20  # Optional (only if dp_fedavg_adaptive=true)
-init_clip_norm = 0.1  # Optional (only if dp_fedavg_adaptive=true)
-noise_multiplier = 1.0  # Optional (only if dp_fedavg_adaptive=true)
-clip_norm_lr = 0.2  # Optional (only if dp_fedavg_adaptive=true)
-clip_norm_target_quantile = 0.5  # Optional (only if dp_fedavg_adaptive=true)
-clip_count_stddev = " "  # Optional (only if dp_fedavg_adaptive=true) # should be null, but toml doesn't accept
-# DP FedAvg Fixed (optional, set dp_fedavg_fixed = true to use)
-dp_fedavg_fixed = false  # Optional
-clip_norm = 10  # Optional (only if dp_fedavg_fixed=true)
-server_side_noising = true  # Optional (only if dp_fedavg_fixed=true)
+# DP FedAvg Adaptive 
+dp_fedavg_adaptive = false  
+num_sampled_clients = 20  
+noise_multiplier = 1.0  
+clip_norm_lr = 0.2  
+clip_norm_target_quantile = 0.5  
+clip_count_stddev = " "
+# DP FedAvg Fixed 
+dp_fedavg_fixed = false  
+clip_norm = 10  
+server_side_noising = true 
 # Fault Tolerant FedAvg
-min_completion_rate_fit = 0.5  # Optional
-min_completion_rate_evaluate = 0.5  # Optional
+min_completion_rate_fit = 0.5  
+min_completion_rate_evaluate = 0.5  
 # FedAdagrad / FedOpt /FedYogi
-eta = 0.01  # Optional: Learning rate for FedAdagrad (default 0.1)
+eta = 0.05  # Optional: Learning rate for FedAdagrad (default 0.1)
 eta_l = 0.05  # Optional: Learning rate for local updates (default 0.1)
 tau = 1e-8 # Optional: Regularization parameter (default 0)
 beta_1 = 0.9
@@ -89,7 +90,6 @@ num-sampled-clients = 2
 sec-agg = "false"
 num-shares = 10
 reconstruction-threshold = 2
-
 
 [tool.flwr.federations]
 default = "local-simulation"

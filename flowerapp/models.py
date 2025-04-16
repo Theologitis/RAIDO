@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torchvision.models import resnet18 , resnet152
 class CNNModel1(nn.Module):
     """
     A simple CNN suitable for CIFAR-10.
@@ -117,3 +117,21 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         return self.fc3(x)
+    
+class ResNetModel(nn.Module):
+    """
+    Adaptation of ResNet18 architecture for CIFAR-10 classification.
+    ResNet18 includes skip connections to help with gradient flow during training.
+    
+    The model is modified by:
+    1. Loading the standard ResNet18 architecture
+    2. Replacing the final fully connected layer to match CIFAR-10's 10 classes
+    3. Removing pretrained weights (set pretrained=False)
+    """
+    def __init__(self) -> None:
+        super(ResNetModel, self).__init__()
+        self.model = resnet18(pretrained=False) # Load ResNet18 model without pretrained weights
+        self.model.fc = nn.Linear(self.model.fc.in_features, 10)  # Adjust for CIFAR-10 classes
+
+    def forward(self, x):
+        return self.model(x) # Forward pass through the entire ResNet architecture

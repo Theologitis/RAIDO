@@ -72,15 +72,19 @@ def handle_fit_metrics(metrics: List[Tuple[int,Metrics]])-> Metrics:
 # from functools import lru_cache
 # @lru_cache(maxsize=None) # for heavy loads and multiple users
 def get_strategy(strategy_name: str):
-    module = __import__("flwr.server.strategy", fromlist=[strategy_name])
+    module = __import__("flwr.server.strategy", fromlist=[strategy_name]) # strategies integrated in flower
+    if strategy_name=="FedAvgPlus":
+        module = __import__("flowerapp.FedAvgPlus", fromlist=[strategy_name])  # custom strategies from custom_strategy module
     return getattr(module, strategy_name)
 
 app = ServerApp()
+
 from flwr.common import Context, Metrics, ndarrays_to_parameters
 from flwr.server import Grid, LegacyContext, ServerApp, ServerConfig
 from flwr.server.strategy import DifferentialPrivacyClientSideFixedClipping
 from flwr.server.workflow import DefaultWorkflow, SecAggPlusWorkflow
 import torch
+
 @app.main()
 def main(grid: Grid, context: Context) -> None:
     
@@ -101,6 +105,7 @@ def main(grid: Grid, context: Context) -> None:
     sig = inspect.signature(strategy_cls.__init__)
     valid_params = set(sig.parameters.keys()) - {"self"}
     strategy_opts = {}
+    
     for key, value in context.run_config.items():
         if key in valid_params:
             if key.endswith("_fn") or "aggregation_fn" in key:
@@ -115,12 +120,18 @@ def main(grid: Grid, context: Context) -> None:
                                 )
     except Exception as e:
         raise RuntimeError(f"Failed to initialize strategy '{strategy_name}' with args {strategy_opts}: {e}")
-    num_rounds = context.run_config["num-server-rounds"]
-    # Wrap with custom messages for strategies
-    strategy = CustomStrategy(strategy=strategy,num_rounds=num_rounds,model=context.run_config["model"],context=context)
+    
+    num_rounds = context.run_config["num-server-rounds"] # read number of rounds
+    
+    # First Wrapper for custom messages:
+    strategy = CustomStrategy(strategy=strategy,
+                              num_rounds=num_rounds,
+                              model=context.run_config["model"],
+                              run_id=context.run_id,
+                              context=context)
 
 
-    # enable Differential Privacy if set in the configurations:
+    # enable Differential Privacy:
     dp = True if context.run_config["dp"].lower()=="true" else False
     if dp:
         noise_multiplier = context.run_config["noise-multiplier"]
@@ -128,6 +139,7 @@ def main(grid: Grid, context: Context) -> None:
         print(clipping_norm)
         num_sampled_clients = context.run_config["num-sampled-clients"]
         
+    # Second wrapper for differential privacy
         strategy = DifferentialPrivacyClientSideFixedClipping(
             strategy,
             noise_multiplier=noise_multiplier,
@@ -135,8 +147,7 @@ def main(grid: Grid, context: Context) -> None:
             num_sampled_clients=num_sampled_clients
         )
         
- 
-    
+
     # Construct the LegacyContext
     context = LegacyContext(
         context=context,
@@ -146,8 +157,7 @@ def main(grid: Grid, context: Context) -> None:
 
     # Create the train/evaluate workflow
     # create secure aggregation workflow if set in the configs.
-    sec_agg=True if context.run_config["sec-agg"].lower()=="true" else False
-    print(sec_agg)
+    sec_agg = True if context.run_config["sec-agg"].lower()=="true" else False
     if sec_agg:
         workflow = DefaultWorkflow(
                 fit_workflow=SecAggPlusWorkflow(
