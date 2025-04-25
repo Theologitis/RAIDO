@@ -12,54 +12,67 @@ from flowerapp.task import (
     get_model_class,
     load_data_sim
 )
-
+from flwr.common.config import unflatten_dict
 class FlowerClient(NumPyClient):
     " Default class of Flower: implements client logic, inherits from NumpyClient"
     
-    def __init__(self, net, trainloader, testloader,epochs,lr,device,context):
+    def __init__(self, net, trainloader, testloader,epochs,lr,device,context,task):
         self.context=context
         self.net = net
         self.trainloader = trainloader
         self.testloader = testloader
         self.local_epochs = epochs
         self.device= device
-        self.lr=lr
+        self.lr = lr
+        self.task = task
         
     def fit(self, parameters, config):
         print('Training...')
-        set_weights(self.net, parameters)
-        if config != {}:
-            self.lr = config["lr"]
-            self.local_epochs = config["epochs"]
-        all_metrics = train(self.net, self.trainloader, self.local_epochs, self.device,self.lr)
-        return get_weights(self.net), len(self.trainloader), {}
+        set_weights(self.task.model, parameters)
+        self.lr = config.get("lr",self.lr)
+        self.local_epochs = config.get("epochs",self.local_epochs)
+        proximal_mu = config.get("proximal_mu", 0.0)
+        all_metrics = self.task.train(self.trainloader, self.local_epochs,self.lr,proximal_mu)
+        # all_metrics = train(self.net, self.trainloader, self.local_epochs, self.device,self.lr)
+        return get_weights(self.task.model), len(self.trainloader), {}
 
     def evaluate(self, parameters, config):
         print('Evaluating...')
-        set_weights(self.net, parameters)
-        loss, accuracy = test(self.net, self.testloader,self.device)
+        set_weights(self.task.model, parameters)
+        #loss, accuracy = test(self.net, self.testloader,self.device)
+        loss, accuracy = self.task.test(self.testloader)
         print(f'Accuracy:{100*accuracy:.2f}%')
         return loss, len(self.testloader), {"accuracy": accuracy}
 
+def get_task(task_name: str):
+    module = __import__(f"flowerapp.tasks.{task_name}", fromlist=[task_name])
+    return getattr(module, task_name)
+
+mods= []
 
 def client_fn(context: Context):
-    "Default function of Flower: initializes FlowerClient inside the ClientApp"
-    partition_id = context.node_config["partition-id"]
+    "Setup ClientApp"
+    partition_id = context.node_config["partition-id"] 
     num_partitions = context.node_config["num-partitions"]
-    batch_size = context.run_config["batch_size"]
-    #train_loader,test_loader=load_data_loc('data',partition_id)
-    train_loader,test_loader = load_data_sim(partition_id,num_partitions,batch_size)
-    net = get_model_class(context.run_config["model"])
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    epochs = context.run_config["epochs"]
-    lr = context.run_config["lr"]
-
-    return FlowerClient(net, train_loader, test_loader,epochs,lr,device,context).to_client()
+    batch_size = context.run_config["batch_size"] # batch size
+    net = get_model_class(context.run_config["model"]) # model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # device
+    task = get_task(context.run_config["task"]) # task e.g. ImageClassification
+    task = task(net,device)
+    train_loader,test_loader = task.load_data(partition_id,num_partitions,batch_size) #train and test dataloaders
+    # train_loader, test_loader = task.load_data('data')
+    epochs = context.run_config["epochs"] # epochs
+    lr = context.run_config["lr"] # learning rate
+    dp = True if context.run_config["dp"].lower()=="true" else False
+    if dp:
+        mods.append( fixedclipping_mod)
+    sec_agg = True if context.run_config["sec-agg"].lower()=="true" else False
+    if sec_agg:
+        mods.append(secaggplus_mod)
+        
+    return FlowerClient(net, train_loader, test_loader, epochs, lr, device, context, task).to_client()
 
 app = ClientApp(
-    client_fn=client_fn,
-    mods=[
-        #secaggplus_mod,
-        #fixedclipping_mod,
-    ],
+        client_fn=client_fn,
+        mods=mods,
 )

@@ -13,7 +13,11 @@ dependencies = [
     "flwr-datasets>=0.5.0",
     "torch==2.5.1",
     "scikit-learn==1.6.1",
-    "torchvision==0.20.1"
+    "torchvision==0.20.1",
+    "pandas",
+    "numpy",
+    "openpyxl",
+    "omegaconf"
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -28,15 +32,21 @@ clientapp = "flowerapp.client_app:app"
 
 [tool.flwr.app.config]
 data_url = ""
-num-server-rounds = 2
-model = "ResNetModel"
-model_dict="true"
+num-server-rounds = 10
+model = "SimpleCNN"
+model.input_dim = 400   #cifar-10
+model.hidden_layers = [120,84]
+model.output_dim = 10
+model_dict="false"
 model_dict_path="output/global_model.pth"
+task = "ImageClassification"
+
 # Hyperparameters
-epochs = 10
-lr = 0.001
-batch_size = 256
-strategy = "FedAvg"
+epochs = 5
+lr = 0.01
+batch_size = 128
+strategy = "FedAvgPlus"
+
 # Strategy Options
 fraction_fit = 1.0
 fraction_evaluate = 1.0
@@ -45,51 +55,53 @@ min_evaluate_clients = 2
 min_available_clients = 2
 accept_failures = true
 inplace = true
+
 # FedAvgPlus
 lr_new = 0.0005
 epochs_new = 2
 decay_round = 1
+
 # FedProx
 proximal_mu = 0.01
+
 # Bulyan
 num_malicious_clients = 1
+
 # FedAvgM
 server_learning_rate = 0.01
 server_momentum = 0.7
-# DP FedAvg Adaptive 
-dp_fedavg_adaptive = false  
-num_sampled_clients = 20  
-noise_multiplier = 1.0  
-clip_norm_lr = 0.2  
-clip_norm_target_quantile = 0.5  
-clip_count_stddev = " "
-# DP FedAvg Fixed 
-dp_fedavg_fixed = false  
-clip_norm = 10  
-server_side_noising = true 
+
 # Fault Tolerant FedAvg
 min_completion_rate_fit = 0.5  
 min_completion_rate_evaluate = 0.5  
+
 # FedAdagrad / FedOpt /FedYogi
 eta = 0.05  # Optional: Learning rate for FedAdagrad (default 0.1)
 eta_l = 0.05  # Optional: Learning rate for local updates (default 0.1)
 tau = 1e-8 # Optional: Regularization parameter (default 0)
 beta_1 = 0.9
 beta_2 = 0.99
+
 # FedTrimmedAvg
 beta = 0.2
 # FedXgbCyclic
 num_evaluation_clients = ""
 num_fit_cleints = ""
+
 # Parameters for the Differential Privacy
 dp = "false"
 noise-multiplier = 0.2
 clipping-norm = 1
 num-sampled-clients = 2
+
 # Parameters for the SecAgg+ protocol
 sec-agg = "false"
 num-shares = 10
 reconstruction-threshold = 2
+
+
+
+
 
 [tool.flwr.federations]
 default = "local-simulation"

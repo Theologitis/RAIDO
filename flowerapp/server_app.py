@@ -139,7 +139,7 @@ def main(grid: Grid, context: Context) -> None:
         print(clipping_norm)
         num_sampled_clients = context.run_config["num-sampled-clients"]
         
-    # Second wrapper for differential privacy
+        # Second wrapper for differential privacy
         strategy = DifferentialPrivacyClientSideFixedClipping(
             strategy,
             noise_multiplier=noise_multiplier,

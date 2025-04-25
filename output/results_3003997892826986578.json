@@ -1,0 +1,12 @@
+{
+    "weighted average accuracy": {
+        "1": 10.459999999999999,
+        "2": 10.459999999999999,
+        "3": 10.459999999999999
+    },
+    "run_id": 3003997892826986578,
+    "model": "SimpleCNN",
+    "num_server_rounds": 3,
+    "epochs": 3,
+    "strategy": "FedProx"
+}

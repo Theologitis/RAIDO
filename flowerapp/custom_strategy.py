@@ -6,7 +6,7 @@ from flwr.server.strategy import Strategy , FedAvg
 from datetime import datetime
 import torch
 import flowerapp.models
-from flowerapp.task import get_model_class,set_weights
+from flowerapp.utils import get_model_class,set_weights
 import json        
 import os
 import threading
@@ -20,6 +20,7 @@ class CustomStrategy(Strategy):
         self.model=model
         self.run_id=run_id
         self.results_to_save = {}
+        self.context = context
         
     def initialize_parameters(self, client_manager):
         """Initialize parameters before training starts."""
@@ -33,18 +34,13 @@ class CustomStrategy(Strategy):
     
         
     def aggregate_fit(self, server_round, results,failures):
-        
         print(f'Aggregating...')
-        
         parameters_aggregated, metrics_aggregated =self.strategy.aggregate_fit(server_round, results, failures)
-        
         # convert parameters to ndarrays
         ndarrays= parameters_to_ndarrays(parameters_aggregated)
-        
         # # instantiate model
         model=get_model_class(self.model)
         set_weights(model, ndarrays)
-        
         # # Save global model in the standard Pytorch way
         if server_round==self.num_rounds:
             torch.save(model.state_dict(),f"output/global_model.pth")
@@ -52,13 +48,11 @@ class CustomStrategy(Strategy):
         return parameters_aggregated, metrics_aggregated
     
     
-    
     def evaluate(self, server_round, parameters):
         if server_round>0:
             #print(f'ROUND {server_round}: Evaluating...')
             print('Evaluating...')
         loss = self.strategy.evaluate(server_round, parameters)
-        
         my_results = {"loss": loss}
         return loss
     
@@ -66,20 +60,20 @@ class CustomStrategy(Strategy):
         """Return evaluation instructions for clients."""
         return self.strategy.configure_evaluate(server_round, parameters, client_manager)
     
-    
     def aggregate_evaluate(self, server_round, results, failures):
-        
         res = self.strategy.aggregate_evaluate(server_round, results, failures)
-    
+        print(res)
         accuracy_value = list(res[1].values())[0]*100
-        
         print(f'weighted average Accuracy =  {accuracy_value:.2f}%')
-        
         # initialize metrics dictionary if not exist:
         if "weighted average accuracy" not in self.results_to_save:
             self.results_to_save["weighted average accuracy"]={}
-            self.results_to_save["run_id"]=self.run_id   
-        
+            self.results_to_save["run_id"]=self.run_id
+            self.results_to_save["model"]=self.context.run_config["model"]
+            self.results_to_save["num_server_rounds"]=self.context.run_config["num-server-rounds"]
+            self.results_to_save["epochs"]=self.context.run_config["num-server-rounds"]
+            self.results_to_save["strategy"]=self.context.run_config["strategy"]
+            
         # store evaluate metrics results for each round in dictionary:     
         self.results_to_save["weighted average accuracy"][f"{server_round}"] =accuracy_value
         # on last round save results in results.json
