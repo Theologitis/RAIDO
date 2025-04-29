@@ -6,7 +6,7 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner
 from flowerapp.tasks.Task import Task
-from flowerapp.task import get_weights
+from flowerapp.utils import get_weights
 class ImageClassification(Task):
     
     def __init__(self, model, device=None):
@@ -68,13 +68,14 @@ class ImageClassification(Task):
                 outputs = self.model(images)
                 loss = self.criterion(outputs, labels)
                 
-                # === Add Proximal Regularization ===
-                prox_term = 0.0
-                for param, global_param in zip(get_weights(self.model), global_weights):
-                    prox_term += ((param - global_param) ** 2).sum()
+                # === Add Proximal Regularization === for FedProx strategy
+                if proximal_mu > 0.0:
+                    prox_term = 0.0
+                    for param, global_param in zip(get_weights(self.model), global_weights):
+                        prox_term += ((param - global_param) ** 2).sum()
 
-                loss += (proximal_mu / 2) * prox_term
-                # ========================================== #
+                    loss += (proximal_mu / 2) * prox_term
+                    # ========================================== #
                 
                 loss.backward()
                 self.optimizer.step()
@@ -85,6 +86,7 @@ class ImageClassification(Task):
             print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
 
         return avg_loss
+
 
     def test(self, testloader: DataLoader):
         """Evaluate the model."""

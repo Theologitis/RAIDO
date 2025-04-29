@@ -38,6 +38,8 @@ def format_flwr_input(data):
             data[key]=f"'{value}'"
     return " ".join(f"{key}={value}" for key, value in data.items()) 
 
+
+
 def stop_run(run_id,env):
     process = subprocess.Popen(
         ['flwr', 'stop', f'{run_id}'],
@@ -47,6 +49,30 @@ def stop_run(run_id,env):
         bufsize=1,
         env=env  # Line-buffered output
     )
+
+def flatten_dict(d, parent_key='', sep='.'):
+    """
+    Recursively flatten a nested dictionary.
+
+    Args:
+        d (dict): The dictionary to flatten
+        parent_key (str): The base key string (used in recursion)
+        sep (str): Separator between keys (default is '.')
+
+    Returns:
+        dict: A flattened dictionary
+    """
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
+
 
 
 # Generator to stream the Flower logs
@@ -92,8 +118,10 @@ def run_flwr():
         data = request.get_json()  # Extract JSON data from request
         if not data:
             return "Invalid input data", 400
-
-        inputs = format_flwr_input(data)  # Convert JSON to CLI args
+        
+        flattened = flatten_dict(data)
+        
+        inputs = format_flwr_input(flattened)  # Convert JSON to CLI args
         return Response(generate_flwr_logs(inputs), mimetype='text/plain')
     except Exception as e:
         return f"Error: {str(e)}", 500

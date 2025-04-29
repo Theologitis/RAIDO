@@ -29,6 +29,47 @@ def get_model_class(class_name):
     net=ModelClass()
     return net
 
+def get_model(model_name,**model_options):
+    import flowerapp.models  # ensure the module is loaded
+
+    ModelClass = getattr(flowerapp.models, model_name, None)
+    if ModelClass is None:
+        raise ValueError(f"Model class '{model_name}' not found in flowerapp.models.")
+    
+    try:
+        model = ModelClass(**model_options)
+    except TypeError as e:
+        raise ValueError(f"Error instantiating model '{model_name}': {e}")
+    
+    return model
+
+def get_optimizer(optim_name,**optim_options):
+    import flowerapp.models  # ensure the module is loaded
+
+    optimClass = getattr(torch.optim, optim_name, None)
+    if optimClass is None:
+        raise ValueError(f"Model class '{optim_name}' not found in flowerapp.models.")
+    
+    try:
+        optimizer = optimClass(**optim_options)
+    except TypeError as e:
+        raise ValueError(f"Error instantiating model '{optim_name}': {e}")
+    
+    return optimizer
+
+def get_criterion(criterion_name,**criterion_options):
+    import flowerapp.models  # ensure the module is loaded
+
+    criterionClass = getattr(torch.nn, criterion_name, None)
+    if criterionClass is None:
+        raise ValueError(f"Model class '{criterion_name}' not found in flowerapp.models.")
+    
+    try:
+        criterion = criterionClass(**criterion_options)
+    except TypeError as e:
+        raise ValueError(f"Error instantiating model '{criterion_name}': {e}")
+    
+    return criterion
 
 class CIFAR10Custom(Dataset):
     """
@@ -227,75 +268,15 @@ def get_weights(net):
     return ndarrays
 
 
-from flwr_datasets import FederatedDataset
-from flwr_datasets.partitioner import IidPartitioner
+# from flwr/examples/flowertune-llm.git:
+def replace_keys(input_dict, match="-", target="_"):
+    """Recursively replace match string with target string in dictionary keys."""
+    new_dict = {}
+    for key, value in input_dict.items():
+        new_key = key.replace(match, target)
+        if isinstance(value, dict):
+            new_dict[new_key] = replace_keys(value, match, target)
+        else:
+            new_dict[new_key] = value
+    return new_dict
 
-fds = None
-
-def load_data_sim(partition_id: int, num_partitions: int , batch_size):
-    """Load partition CIFAR10 data."""
-    # Only initialize `FederatedDataset` once
-    global fds
-    if fds is None:
-        partitioner = IidPartitioner(num_partitions=num_partitions)
-        fds = FederatedDataset(
-            dataset="uoft-cs/cifar10",
-            partitioners={"train": partitioner},
-        )
-    partition = fds.load_partition(partition_id)
-    # Divide data on each node: 80% train, 20% test
-    partition_train_test = partition.train_test_split(test_size=0.2, seed=42)
-    pytorch_transforms = Compose(
-        [ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-    )
-
-    def apply_transforms(batch):
-        """Apply transforms to the partition from FederatedDataset."""
-        batch["img"] = torch.stack([pytorch_transforms(img) for img in batch["img"]])
-        batch["label"] = torch.tensor(batch["label"])
-        return batch
-
-    partition_train_test = partition_train_test.with_transform(apply_transforms)
-    trainloader = DataLoader(partition_train_test["train"], batch_size=batch_size, shuffle=True)
-    testloader = DataLoader(partition_train_test["test"], batch_size=batch_size)
-    return trainloader, testloader
-
-def train(net, trainloader, epochs, device,lr):
-    """Train the model on the training set."""
-    net.to(device)  # move model to GPU if available
-    criterion = torch.nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.Adam(net.parameters(), lr=lr)
-    print(device)
-    net.train()
-    running_loss = 0.0
-    for _ in range(epochs):
-        for batch in trainloader:
-            images = batch["img"].to(device)
-            labels = batch["label"].to(device)
-            optimizer.zero_grad()
-            loss = criterion(net(images), labels)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-        print(running_loss/len(trainloader))
-            
-    avg_trainloss = running_loss / len(trainloader)
-  
-    return avg_trainloss
-
-
-def test(net, testloader, device):
-    """Validate the model on the test set."""
-    net.to(device)
-    criterion = torch.nn.CrossEntropyLoss()
-    correct, loss = 0, 0.0
-    with torch.no_grad():
-        for batch in testloader:
-            images = batch["img"].to(device)
-            labels = batch["label"].to(device)
-            outputs = net(images)
-            loss += criterion(outputs, labels).item()
-            correct += (torch.max(outputs.data, 1)[1] == labels).sum().item()
-    accuracy = correct / len(testloader.dataset)
-    loss = loss / len(testloader)
-    return loss, accuracy

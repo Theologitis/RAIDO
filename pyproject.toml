@@ -32,11 +32,11 @@ clientapp = "flowerapp.client_app:app"
 
 [tool.flwr.app.config]
 data_url = ""
-num-server-rounds = 10
+num-server-rounds = 1
 model = "SimpleCNN"
-model.input_dim = 400   #cifar-10
-model.hidden_layers = [120,84]
-model.output_dim = 10
+input_dim = 400   #cifar-10
+hidden_layers = 10
+output_dim = 10
 model_dict="false"
 model_dict_path="output/global_model.pth"
 task = "ImageClassification"
@@ -45,9 +45,10 @@ task = "ImageClassification"
 epochs = 5
 lr = 0.01
 batch_size = 128
-strategy = "FedAvgPlus"
-
+strategy.name = "FedAvgPlus"
+strategy.options = 0
 # Strategy Options
+
 fraction_fit = 1.0
 fraction_evaluate = 1.0
 min_fit_clients = 2
@@ -55,6 +56,58 @@ min_evaluate_clients = 2
 min_available_clients = 2
 accept_failures = true
 inplace = true
+
+# strategy.this.options = 1
+# strategy.options.fraction_evaluate = 1.0
+# strategy.options.min_fit_clients = 2
+# strategy.options.min_fit_clients = 2
+# strategy.options.min_evaluate_clients = 2
+# strategy.options.min_available_clients = 2
+# strategy.options.accept_failures = true
+# strategy.options.inplace = true
+
+# strategy.FedAvgPlus.options.lr_new = 0
+# strategy.FedAvgPlus.options.epochs_new = 0
+# strategy.FedAvgPlus.options.decay_round = 0
+
+# strategy.FedAvgProx.options.proximal_mu = 0
+
+# Bulyan
+# strategy.Bulyan.options.num_malicious_clients = 1
+
+# FedAvgM
+# strategy.FedAvgM.options.server_learning_rate = 0.01
+# strategy.FedAvgM.options.server_momentum = 0.7
+
+# Fault Tolerant FedAvg
+# strategy.FaultTolerantFedAvg.options.min_completion_rate_fit = 0.5  
+# strategy.FaultTolerantFedAvg.options.min_completion_rate_evaluate = 0.5  
+
+# FedAdagrad / FedOpt / FedYogi
+# strategy.FedAdagrad.options.eta = 0.05
+# strategy.FedAdagrad.options.eta_l = 0.05
+# strategy.FedAdagrad.options.tau = 1e-8
+# strategy.FedAdagrad.options.beta_1 = 0.9
+# strategy.FedAdagrad.options.beta_2 = 0.99
+
+# strategy.FedOpt.options.eta = 0.05
+# strategy.FedOpt.options.eta_l = 0.05
+# strategy.FedOpt.options.tau = 1e-8
+# strategy.FedOpt.options.beta_1 = 0.9
+# strategy.FedOpt.options.beta_2 = 0.99
+
+# strategy.FedYogi.options.eta = 0.05
+# strategy.FedYogi.options.eta_l = 0.05
+# strategy.FedYogi.options.tau = 1e-8
+# strategy.FedYogi.options.beta_1 = 0.9
+# strategy.FedYogi.options.beta_2 = 0.99
+
+# FedTrimmedAvg
+# strategy.FedTrimmedAvg.options.beta = 0.2
+
+# FedXgbCyclic
+#strategy.FedXgbCyclic.options.num_evaluation_clients = ""
+#strategy.FedXgbCyclic.options.num_fit_clients = ""
 
 # FedAvgPlus
 lr_new = 0.0005
@@ -97,9 +150,7 @@ num-sampled-clients = 2
 # Parameters for the SecAgg+ protocol
 sec-agg = "false"
 num-shares = 10
-reconstruction-threshold = 2
-
-
+secagg.reconstruction-threshold = 2
 
 
 

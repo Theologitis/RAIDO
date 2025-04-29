@@ -62,7 +62,7 @@ class CustomStrategy(Strategy):
     
     def aggregate_evaluate(self, server_round, results, failures):
         res = self.strategy.aggregate_evaluate(server_round, results, failures)
-        print(res)
+        
         accuracy_value = list(res[1].values())[0]*100
         print(f'weighted average Accuracy =  {accuracy_value:.2f}%')
         # initialize metrics dictionary if not exist:
@@ -71,9 +71,9 @@ class CustomStrategy(Strategy):
             self.results_to_save["run_id"]=self.run_id
             self.results_to_save["model"]=self.context.run_config["model"]
             self.results_to_save["num_server_rounds"]=self.context.run_config["num-server-rounds"]
-            self.results_to_save["epochs"]=self.context.run_config["num-server-rounds"]
-            self.results_to_save["strategy"]=self.context.run_config["strategy"]
-            
+            self.results_to_save["epochs"]=self.context.run_config["epochs"]
+            self.results_to_save["strategy"]=self.context.run_config["strategy.name"]
+                
         # store evaluate metrics results for each round in dictionary:     
         self.results_to_save["weighted average accuracy"][f"{server_round}"] =accuracy_value
         # on last round save results in results.json
