@@ -39,17 +39,6 @@ def format_flwr_input(data):
     return " ".join(f"{key}={value}" for key, value in data.items()) 
 
 
-
-def stop_run(run_id,env):
-    process = subprocess.Popen(
-        ['flwr', 'stop', f'{run_id}'],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,  # Merge stderr into stdout
-        text=True,
-        bufsize=1,
-        env=env  # Line-buffered output
-    )
-
 def flatten_dict(d, parent_key='', sep='.'):
     """
     Recursively flatten a nested dictionary.
@@ -73,8 +62,6 @@ def flatten_dict(d, parent_key='', sep='.'):
 
 
 
-
-
 # Generator to stream the Flower logs
 def generate_flwr_logs(inputs):
     """Stream Flower logs in real-time, cleaning them before sending."""
@@ -90,7 +77,7 @@ def generate_flwr_logs(inputs):
         env=env  # Line-buffered output
     )
     for line in iter(process.stdout.readline, ''):
-        run_id_match = re.search(r'run_id.*?(\d+)', line) # catch run_id from stream
+        run_id_match = re.search(r'run.*?(\d+)', line) # catch run_id from stream
         if run_id_match:
             active_runs["run_id"] = run_id_match.group(1)
             print(f"[INFO] Captured run_id: {active_runs['run_id']}")
@@ -98,21 +85,10 @@ def generate_flwr_logs(inputs):
     process.stdout.close()
     process.wait()
 
-    # try:
-    #     for line in iter(process.stdout.readline, ''):
-    #         if request.environ.get('werkzeug.server.shutdown'):  # Detect if Flask is shutting down
-    #             break
-    #         clean_line = clean_log_output(line)
-    #         yield clean_line
-    # finally:
-    
-    #     process.stdout.close()
-    #     process.terminate()  # Gracefully stop the process
-    #     process.wait()
-
 # Route to start the Flower run and stream logs
-@app.route('/run-flwr', methods=['POST'])
-def run_flwr():
+
+@app.route('/flwr-run', methods=['POST'])
+def flwr_run():
     """Start Flower run and stream cleaned logs."""
     try:
         data = request.get_json()  # Extract JSON data from request
@@ -126,26 +102,27 @@ def run_flwr():
     except Exception as e:
         return f"Error: {str(e)}", 500
 
-# @app.route('/stop-flwr', methods=['POST'])
-# def stop_flwr():
-#     try:
-#         run_id = active_runs.get("run_id")
-#         if not run_id:
-#             return jsonify({"message": "No active run_id to stop"}), 400
+@app.route('/flwr-stop', methods=['POST'])
+def flwr_stop():
+    try:
+        data = request.get_json()  # Get the request data
+        run_id = data.get("run_id")
+        if not run_id:
+            return jsonify({"message": f"No active run with id:{run_id} to stop"}), 400
         
-#         env = os.environ.copy()
-#         process = subprocess.Popen(
-#             ['flwr', 'stop', f'{run_id}'],
-#             stdout=subprocess.PIPE,
-#             stderr=subprocess.STDOUT,
-#             text=True,
-#             bufsize=1,
-#             env=env
-#         )
-#         output, _ = process.communicate(timeout=10)
-#         return jsonify({"message": f"Run {run_id} stopped successfully", "log": output}), 200
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+        env = os.environ.copy()
+        process = subprocess.Popen(
+            ['flwr', 'stop', f'{run_id}','flower-app','local-deployment-docker'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            env=env
+        )
+        output, _ = process.communicate(timeout=10)
+        return jsonify({"message": f"Run {run_id} stopped successfully", "log": output}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # def ls_flwr():
 #     return

@@ -3,13 +3,6 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.optim as optim
-#from flwr_datasets import FederatedDataset
-from sklearn.compose import ColumnTransformer
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OrdinalEncoder, StandardScaler
-from torch.utils.data import DataLoader, TensorDataset
-#from flwr_datasets.partitioner import IidPartitioner
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,11 +11,40 @@ from torch.utils.data import DataLoader, Dataset
 import pickle
 import numpy as np
 import os
-from pathlib import Path
-#from torchvision.models import resnet18
-import flwr as fl
-import yaml
+import inspect
 import flowerapp.models
+
+def validate_options(cls, options):
+    if not isinstance(options, dict):
+        raise TypeError("Options must be a dictionary.")
+
+    # Get valid parameter names from __init__ (excluding 'self')
+    valid_params = inspect.signature(cls.__init__).parameters
+    valid_keys = set(valid_params) - {"self"}
+
+    valid_options = {}
+    for key, value in options.items():
+        if key in valid_keys:
+            valid_options[key] = value
+        else:
+            print(f"Warning: '{key}' is not a valid parameter and will be ignored.")
+
+    return valid_options
+    
+
+def drop_empty_keys(input_dict):
+    """Recursively remove keys with empty string values in a nested dictionary."""
+    new_dict = {}
+    for key, value in input_dict.items():
+        if isinstance(value, dict):
+            # Recurse into nested dictionaries
+            new_value = drop_empty_keys(value)
+            if new_value:  # Only add non-empty dictionaries
+                new_dict[key] = new_value
+        elif value != "":
+            # Only add keys with non-empty string values
+            new_dict[key] = value
+    return new_dict
 
 def get_model_class(class_name):
     ModelClass= getattr(flowerapp.models, class_name, None)
@@ -37,6 +59,7 @@ def get_model(model_name,**model_options):
         raise ValueError(f"Model class '{model_name}' not found in flowerapp.models.")
     
     try:
+        model_options = validate_options(ModelClass,model_options)
         model = ModelClass(**model_options)
     except TypeError as e:
         raise ValueError(f"Error instantiating model '{model_name}': {e}")

@@ -6,21 +6,21 @@ from flwr.server.strategy import Strategy , FedAvg
 from datetime import datetime
 import torch
 import flowerapp.models
-from flowerapp.utils import get_model_class,set_weights
+from flowerapp.utils import get_model, set_weights
 import json        
 import os
 import threading
 
 class CustomStrategy(Strategy):
     
-    def __init__(self,strategy:Strategy,num_rounds,model,run_id,context):
+    def __init__(self,strategy:Strategy,num_rounds,model,run_id,configs):
         super().__init__()
         self.strategy=strategy
         self.num_rounds=num_rounds
         self.model=model
         self.run_id=run_id
         self.results_to_save = {}
-        self.context = context
+        self.cfg = configs
         
     def initialize_parameters(self, client_manager):
         """Initialize parameters before training starts."""
@@ -39,7 +39,7 @@ class CustomStrategy(Strategy):
         # convert parameters to ndarrays
         ndarrays= parameters_to_ndarrays(parameters_aggregated)
         # # instantiate model
-        model=get_model_class(self.model)
+        model=get_model(self.cfg.model.name,**self.cfg.model.options)
         set_weights(model, ndarrays)
         # # Save global model in the standard Pytorch way
         if server_round==self.num_rounds:
@@ -69,14 +69,17 @@ class CustomStrategy(Strategy):
         if "weighted average accuracy" not in self.results_to_save:
             self.results_to_save["weighted average accuracy"]={}
             self.results_to_save["run_id"]=self.run_id
-            self.results_to_save["model"]=self.context.run_config["model"]
-            self.results_to_save["num_server_rounds"]=self.context.run_config["num-server-rounds"]
-            self.results_to_save["epochs"]=self.context.run_config["epochs"]
-            self.results_to_save["strategy"]=self.context.run_config["strategy.name"]
+            self.results_to_save["model"]=self.cfg.model.name
+            self.results_to_save["num_server_rounds"]=self.cfg["num-server-rounds"]
+            self.results_to_save["epochs"]=self.cfg.train["epochs"]
+            self.results_to_save["strategy"]=self.cfg.strategy.name
                 
-        # store evaluate metrics results for each round in dictionary:     
+        # store evaluate metrics results for each round in dictionary: 
+            
         self.results_to_save["weighted average accuracy"][f"{server_round}"] =accuracy_value
-        # on last round save results in results.json
+        
+        # on last round save results in results.json:
+        
         if server_round == self.num_rounds:
             save_results(self.results_to_save,self.run_id)
             print(f'\nRun completed successfully with:\nweighted average Accuracy = {accuracy_value:.2f}%') 

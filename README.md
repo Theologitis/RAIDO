@@ -1,88 +1,73 @@
 ---
-tags: [prototype, version 0.1.4 , flower version 1.17]
+tags: [prototype,docker, version 0.1.2,flwr_version 1.17]
 dataset: [cifar]
-framework: [flower, torch]
+framework: [torch]
 ---
 
-# Federated Learning Component source code
-
-This code is the source code for the RAIDO platform. It is built with Flower AI and Pytorch Frameworks.
+# Federated Learning component for RAIDO:
+This repository is the source code of RAIDO's Federated Learning component. It is built on Flower and Pytorch Frameworks.
 It includes Docker Files for local and distributed Deployment of a Federation.
-More information on the system can be found here.
 
+
+## project code structure
+``` shell
+FLOWER-APP/
+├── data/                   # Local data sources
+├── docker/                 # Dockerfiles for deployment
+├── flowerapp/              # Main application code
+│   ├── strategies/         # Custom federated learning strategies
+│   │   
+│   ├── tasks/              # Task definitions (e.g., classification, etc.)
+│   │   ├── ImageClassification.py
+│   │   └── Task.py
+│   ├── client_app.py       # Client-side application logic
+│   ├── models.py           # Machine learning models
+│   ├── server_app.py       # Server-side application logic
+│   ├── utils.py            # shared utilities for server_app and client_app
+│   └── __init__.py
+├── output/                 # Output results
+│   └── results.json        # Training/evaluation results
+├── index.html              
+├── pyproject.toml          # Project metadata like dependencies and configs
+└── README.md               
+```
 ## Set up the project
 
-The setup follows the Docker guide on:
+The setup follows the Docker guide on: https://flower.ai/docs/framework/docker/tutorial-quickstart-docker-compose.html
 
-For a local deployment simply run: 
+If you don't have Docker installed in your system you can download here: https://www.docker.com/get-started/
+
+After you have installed Docker follow these steps to deploy and run the application:
+
+First create the docker images, from inside the flower-app directory run:
 ```shell
-docker compose -f complete/compose.yml up --built -d
+cd docker
+```
+```shell
+docker build -f clientapp.Dockerfile -t flwr_clientapp:0.0.3../
+``` 
+```shell
+docker build -f serverapp.Dockerfile -t flwr_serverapp:0.0.3 ../
+
+``` 
+For a local deployment simply run: 
+
+```shell
+docker compose -f complete/compose.yml up --build -d
 ```
 
-after the containers are started, you can start a Federated Learning run with:
+after the containers are started, you can start a Federated Learning run with: ( from linux terminal )
+
 ```shell
 flwr run . local-deployment-docker --stream
 ```
+or (recommended) use the index.html, run it with a web server.
+(you can download a liver server here: https://simplewebserver.org/ or use liveserver plug-in for VScode)
 
 
-### Clone the project
+# DOCUMENTATION
 
-Start by cloning the example project:
-
-```shell
-git clone --depth=1 https://github.com/adap/flower.git && mv flower/examples/fl-tabular . && rm -rf flower && cd fl-tabular
-```
-
-This will create a new directory called `fl-tabular` containing the following files:
-
-```shell
-fl-tabular
-├── fltabular
-│   ├── client_app.py   # Defines your ClientApp
-│   ├── server_app.py   # Defines your ServerApp
-│   └── task.py         # Defines your model, training and data loading
-├── pyproject.toml      # Project metadata like dependencies and configs
-└── README.md
-```
-
-### Install dependencies and project
-
-Install the dependencies defined in `pyproject.toml` as well as the `fltabular` package.
-
-```shell
-# From a new python environment, run:
-pip install -e .
-```
-
-## Run the Example
-
-You can run your `ClientApp` and `ServerApp` in both _simulation_ and
-_deployment_ mode without making changes to the code. If you are starting
-with Flower, we recommend you using the _simulation_ model as it requires
-fewer components to be launched manually. By default, `flwr run` will make use of the Simulation Engine.
-
-### Run with the Simulation Engine
-
-> \[!NOTE\]
-> Check the [Simulation Engine documentation](https://flower.ai/docs/framework/how-to-run-simulations.html) to learn more about Flower simulations and how to optimize them.
-
-```bash
-flwr run .
-```
-
-You can also override some of the settings for your `ClientApp` and `ServerApp` defined in `pyproject.toml`. For example:
-
-```bash
-flwr run . --run-config num-server-rounds=10
-```
-
-### Run with the Deployment Engine
-
-Follow this [how-to guide](https://flower.ai/docs/framework/how-to-run-flower-with-deployment-engine.html) to run the same app in this example but with Flower's Deployment Engine. After that, you might be intersted in setting up [secure TLS-enabled communications](https://flower.ai/docs/framework/how-to-enable-tls-connections.html) and [SuperNode authentication](https://flower.ai/docs/framework/how-to-authenticate-supernodes.html) in your federation.
-
-If you are already familiar with how the Deployment Engine works, you may want to learn how to run it using Docker. Check out the [Flower with Docker](https://flower.ai/docs/framework/docker/index.html) documentation.
-
-
+## OPTIONS
 | Name | Description | Type / Range | Default Value |
 |------|-------------|---------------|----------------|
 | strategy.name | Selected strategy to run | str | FedAvgPlus |

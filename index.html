@@ -121,7 +121,7 @@
     </div>
 
     <button id="runButton">Start Federated Learning</button>
-
+    <button id="stopButton">Stop Federated Learning</button>
     <div id="output" class="output">
         <pre id="outputText"></pre>
     </div>
@@ -142,65 +142,101 @@
     });
 
     // Handle starting the federated learning process
+    let activeRunId = null;  // Store the active run_id
+
     document.getElementById('runButton').addEventListener('click', async function() {
-        document.getElementById('output').style.display = 'block';
-        document.getElementById('outputText').textContent = '';
-        document.getElementById('error').textContent = '';
+    document.getElementById('output').style.display = 'block';
+    document.getElementById('outputText').textContent = '';
+    document.getElementById('error').textContent = '';
 
-        // Get the selected strategy and epochs
-        const selectedStrategy = document.getElementById('strategySelect').value;
-        const selectedEpochs = parseInt(document.getElementById('epochInput').value,10); 
+    // Get the selected strategy and epochs
+    const selectedStrategy = document.getElementById('strategySelect').value;
+    const selectedEpochs = parseInt(document.getElementById('epochInput').value,10); 
 
-        // Create JSON payload to send to Flask
-        const requestData = {
-            strategy:{name: selectedStrategy},
-            model: "SimpleCNN",
-            epochs: selectedEpochs
-   
-        };
+    // Create JSON payload to send to Flask
+    const requestData = {
+        strategy: { name: selectedStrategy },
+        train: { epochs: selectedEpochs }
+    };
 
-        const controller = new AbortController(); // create a controler to prevent stream to break
-        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+    const controller = new AbortController(); // create a controller to prevent stream from breaking
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
 
-        try {
-            const response = await fetch('http://127.0.0.1:5000/run-flwr', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData),
-                signal: controller.signal
-            });
+    try {
+        const response = await fetch('http://127.0.0.1:5000/flwr-run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData),
+            signal: controller.signal
+        });
 
-            if (!response.body) {
-                throw new Error("No response body received.");
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-
-            function readChunk() {
-                return reader.read().then(({ done, value }) => {
-                    if (done) {
-                        clearTimeout(timeoutId);
-                        reader.cancel()
-                    return
-                }
-               
-
-                document.getElementById('outputText').textContent += decoder.decode(value);
-                readChunk(); // Continue reading streamed logs
-                });
-            }
-
-            readChunk();
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                document.getElementById('error').textContent = "The operation timed out.";
-            } else {
-                document.getElementById('error').textContent = error.message;
-            }
-        
+        if (!response.body) {
+            throw new Error("No response body received.");
         }
-    });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        function readChunk() {
+            return reader.read().then(({ done, value }) => {
+                if (done) {
+                    clearTimeout(timeoutId);
+                    reader.cancel();
+                    return;
+                }
+
+                // Check if we get the run_id from the logs
+                const logText = decoder.decode(value);
+                const run_id_match = logText.match(/run.*?(\d+)/);
+                if (run_id_match) {
+                    activeRunId = run_id_match[1];  // Store the run_id
+                    console.log("Captured run_id:", activeRunId);
+                }
+
+                document.getElementById('outputText').textContent += logText;
+                readChunk(); // Continue reading streamed logs
+            });
+        }
+
+        readChunk();
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            document.getElementById('error').textContent = "The operation timed out.";
+        } else {
+            document.getElementById('error').textContent = error.message;
+        }
+    }
+});
+
+document.getElementById('stopButton').addEventListener('click', async function () {
+    if (!activeRunId) {
+        document.getElementById('error').textContent = "No active run to stop.";
+        return;
+    }
+
+    document.getElementById('error').textContent = '';
+    document.getElementById('output').style.display = 'block';
+    document.getElementById('outputText').textContent = 'Stopping federated learning...';
+
+    try {
+        const response = await fetch('http://127.0.0.1:5000/flwr-stop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ run_id: activeRunId })  // Pass the active run_id
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            document.getElementById('outputText').textContent = result.message + "\n" + result.log;
+        } else {
+            document.getElementById('error').textContent = result.message || 'Failed to stop the run.';
+        }
+    } catch (error) {
+        document.getElementById('error').textContent = 'Error stopping the run: ' + error.message;
+    }
+});
+
 </script>
 </body>
 </html>

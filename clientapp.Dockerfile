@@ -1,8 +1,7 @@
-FROM flwr/clientapp:1.17.0
+FROM flwr_clientapp:0.0.3
 
 WORKDIR /app
-COPY pyproject.toml .
-RUN sed -i 's/.*flwr\[simulation\].*//' pyproject.toml \
-    && python -m pip install -U --no-cache-dir .
+
+RUN pip install omegaconf
 
 ENTRYPOINT ["flwr-clientapp"]

@@ -3,21 +3,24 @@ from flwr.common import ndarrays_to_parameters, Metrics, Context
 from flwr.server import ServerApp, ServerConfig, ServerAppComponents
 from flwr.common import Context
 from flowerapp.my_strategy import CustomFedAvg
-from flowerapp.utils import get_weights, set_weights, get_model_class
+from flowerapp.utils import get_weights, set_weights, get_model , drop_empty_keys , validate_options
 from typing import List, Tuple
 import json
 import importlib
-from flowerapp.custom_strategy import CustomStrategy
+from flowerapp.strategies.custom_strategy import CustomStrategy
 import inspect
-import flwr.server.strategy.fedyogi
+import flwr.server.strategy.fedprox
 from flwr.common.config import unflatten_dict
 from flwr.common import Context, Metrics, ndarrays_to_parameters
 from flwr.server import Grid, LegacyContext, ServerApp, ServerConfig
-from flwr.server.strategy import DifferentialPrivacyClientSideFixedClipping
+from flwr.server.strategy import (DifferentialPrivacyClientSideFixedClipping,
+                                  DifferentialPrivacyClientSideAdaptiveClipping,
+                                  DifferentialPrivacyServerSideAdaptiveClipping,
+                                  DifferentialPrivacyServerSideFixedClipping)
 from flwr.server.workflow import DefaultWorkflow, SecAggPlusWorkflow
 import torch
 
-#from omegaconf import DictConfig
+from omegaconf import DictConfig
 
 def get_function_from_string(func_name):
     """Dynamically get a function from its name."""
@@ -55,16 +58,16 @@ def on_fit_config(server_round: int)-> Metrics:
         lr = 0.005   
     return {"lr":lr}
 
-def get_evaluate_fn(testloader, device):
-    """Return a function that performs evaluation of the global model, to be passed at: evaluate_fn """
-    def evaluate(server_round,net,parameters_ndarrays,config):
+# def get_evaluate_fn(testloader, device):
+#     """Return a function that performs evaluation of the global model, to be passed at: evaluate_fn """
+#     def evaluate(server_round,net,parameters_ndarrays,config):
         
-        set_weights(net, parameters_ndarrays)
-        net.to(device)
-        loss, accuracy = test(net,testloader,device)
-        return loss, {"cen_accuracy": accuracy}
+#         set_weights(net, parameters_ndarrays)
+#         net.to(device)
+#         loss, accuracy = test(net,testloader,device)
+#         return loss, {"cen_accuracy": accuracy}
     
-    return evaluate
+#     return evaluate
 
 def handle_fit_metrics(metrics: List[Tuple[int,Metrics]])-> Metrics:
     """ handle metrics from fit method in clients, passed at strategy callback: fit_metrics_aggregation_fn """
@@ -78,52 +81,50 @@ def handle_fit_metrics(metrics: List[Tuple[int,Metrics]])-> Metrics:
 
 # from functools import lru_cache
 # @lru_cache(maxsize=None) # for heavy loads and multiple users
-def get_strategy(strategy_name: str):
+def get_strategy(strategy_name: str ,  **strategy_opts):
      # strategies integrated in flower
     if strategy_name=="FedAvgPlus":
-        module = __import__(f"flowerapp.strategies.{strategy_name}", fromlist=[strategy_name])
+        module = __import__(f"flowerapp.strategies.{strategy_name}", fromlist=[strategy_name]) # custom strategies from custom_strategy module
     else:
-        module = __import__("flwr.server.strategy", fromlist=[strategy_name])# custom strategies from custom_strategy module
-    return getattr(module, strategy_name)
-
-app = ServerApp()
-
-
-
-@app.main()
-def main(grid: Grid, context: Context) -> None:
-    # Initialize global model
-    #cfg = DictConfig(unflatten_dict(context.run_config))
-
-    net = get_model_class(context.run_config["model"])
-    model_dict = True if context.run_config["model_dict"].lower()=="true" else False
-    params = ndarrays_to_parameters(get_weights(net))
-    if model_dict:
-        PATH = context.run_config["model_dict_path"]
-        net.load_state_dict(torch.load(PATH, weights_only=True))
-        params=ndarrays_to_parameters(get_weights(net))
-    else:
-        params = ndarrays_to_parameters(get_weights(net))
-        
-    # Initialize Strategy    
-    strategy_name = context.run_config["strategy.name"]
-    strategy_cls = get_strategy(strategy_name)
-    sig = inspect.signature(strategy_cls.__init__)
-    valid_params = set(sig.parameters.keys()) - {"self"}
-    strategy_opts = {}
-    for key, value in context.run_config.items():
-        if key in valid_params:
-            if key.endswith("_fn") or "aggregation_fn" in key:
-                value = get_function_from_string(value) if value else None
-            if value not in (None, "", "null"):
-                strategy_opts[key] = value
-    strategy_opts["initial_parameters"] = params
+        module = __import__("flwr.server.strategy", fromlist=[strategy_name])
+    strategyClass= getattr(module, strategy_name)
     try:
-        strategy = strategy_cls(**strategy_opts,
+        strategy_opts = validate_options( strategyClass,strategy_opts)
+        strategy = strategyClass(**strategy_opts,
                                 evaluate_metrics_aggregation_fn=weighted_average,
                                 )
     except Exception as e:
         raise RuntimeError(f"Failed to initialize strategy '{strategy_name}' with args {strategy_opts}: {e}")
+    return strategy
+
+#initialize app
+app = ServerApp()
+
+
+# Setup serverapp
+@app.main()
+def main(grid: Grid, context: Context) -> None:
+    # create nested config Dictionary:
+    cfg = DictConfig(drop_empty_keys(unflatten_dict(context.run_config)))
+
+    # Initialize global model
+    net = get_model(cfg.model.name,**cfg.model.options)
+    pretrained = True if cfg.model.pretrained.lower()=="true" else False
+    if pretrained:
+        net.load_state_dict(torch.load(cfg.model.path, weights_only=True))
+        params=ndarrays_to_parameters(get_weights(net))
+    else:
+        params = ndarrays_to_parameters(get_weights(net))
+        
+    # Initialize Strategy:   
+    strategy_name = cfg.strategy.name
+    if strategy_name in cfg.strategy:
+        strategy_opts = {**cfg.strategy.options, **cfg.strategy[strategy_name]["options"]} # pass common and class-specific strategy options
+    else:
+        strategy_opts={**cfg.strategy.options}
+
+    strategy_opts["initial_parameters"] = params # pass initial parameters to strategy
+    strategy = get_strategy(strategy_name,**strategy_opts)
     
     # read number of rounds:
     num_rounds = context.run_config["num-server-rounds"]
@@ -131,27 +132,37 @@ def main(grid: Grid, context: Context) -> None:
     # First Wrapper for custom messages:
     strategy = CustomStrategy(strategy=strategy,
                               num_rounds=num_rounds,
-                              model=context.run_config["model"],
+                              model=cfg.model.name,
                               run_id=context.run_id,
-                              context=context)
+                              configs=cfg)
 
 
     # enable Differential Privacy:
-    dp = True if context.run_config["dp"].lower()=="true" else False
-    if dp:
-        noise_multiplier = context.run_config["noise-multiplier"]
-        clipping_norm = context.run_config["clipping-norm"]
-        
-        num_sampled_clients = context.run_config["num-sampled-clients"]
-        
-        # Second wrapper for differential privacy
-        strategy = DifferentialPrivacyClientSideFixedClipping(
-            strategy,
-            noise_multiplier=noise_multiplier,
-            clipping_norm=clipping_norm,
-            num_sampled_clients=num_sampled_clients
-        )
-        
+    dp = cfg.dp
+    if dp.flag.lower() == "true":
+        if  dp.side == "client":
+            if dp.type =="fixed":
+                strategy = DifferentialPrivacyClientSideFixedClipping(
+                    strategy,
+                    **dp.fixed
+                )
+            else:
+                strategy = DifferentialPrivacyClientSideAdaptiveClipping(
+                    strategy,
+                    **dp.adaptive
+                )
+        else:
+            if dp.type =="fixed":
+                strategy = DifferentialPrivacyServerSideFixedClipping(
+                    strategy,
+                    **dp.fixed
+                )
+            else:
+                strategy = DifferentialPrivacyServerSideAdaptiveClipping(
+                    strategy,
+                    **dp.adaptive
+                )
+            
 
     # Construct the LegacyContext
     context = LegacyContext(
@@ -160,9 +171,9 @@ def main(grid: Grid, context: Context) -> None:
         strategy=strategy,
     )
 
-    # Create the train/evaluate workflow
+    
     # create secure aggregation workflow if set in the configs.
-    sec_agg = True if context.run_config["sec-agg"].lower()=="true" else False
+    sec_agg = True if cfg.secagg.flag.lower() == "true" else False
     if sec_agg:
         workflow = DefaultWorkflow(
                 fit_workflow=SecAggPlusWorkflow(
@@ -171,6 +182,7 @@ def main(grid: Grid, context: Context) -> None:
             )
         )
     else:
+        # Create default train/evaluate workflow
         workflow = DefaultWorkflow()
     
     # Execute
