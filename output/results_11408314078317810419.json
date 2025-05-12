@@ -1,0 +1,10 @@
+{
+    "weighted average accuracy": {
+        "1": 9.64
+    },
+    "run_id": 11408314078317810419,
+    "model": "SimpleCNN",
+    "num_server_rounds": 1,
+    "epochs": 2,
+    "strategy": "FedYogi"
+}

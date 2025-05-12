@@ -1,0 +1,11 @@
+{
+    "weighted average accuracy": {
+        "1": 27.209999999999994,
+        "2": 10.37
+    },
+    "run_id": 7568149894791377165,
+    "model": "SimpleCNN",
+    "num_server_rounds": 2,
+    "epochs": 10,
+    "strategy": "Scaffold"
+}

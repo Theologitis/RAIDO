@@ -1,0 +1,14 @@
+{
+    "weighted average accuracy": {
+        "1": 9.629999999999999,
+        "2": 9.24,
+        "3": 9.490000000000002,
+        "4": 9.259999999999998,
+        "5": 9.559999999999999
+    },
+    "run_id": 14942814288159819708,
+    "model": "ResNetModel",
+    "num_server_rounds": 5,
+    "epochs": 5,
+    "strategy": "FedAvg"
+}

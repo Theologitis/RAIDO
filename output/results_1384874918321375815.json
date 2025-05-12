@@ -1,0 +1,14 @@
+{
+    "weighted average accuracy": {
+        "1": 0.0,
+        "2": 0.0,
+        "3": 0.0,
+        "4": 0.0,
+        "5": 0.0
+    },
+    "run_id": 1384874918321375815,
+    "model": "TemperatureForecastModel",
+    "num_server_rounds": 5,
+    "epochs": 5,
+    "strategy": "FedAvg"
+}

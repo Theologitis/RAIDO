@@ -1,0 +1,14 @@
+{
+    "weighted average accuracy": {
+        "1": 50.24999999999999,
+        "2": 50.74999999999999,
+        "3": 50.24999999999999,
+        "4": 52.0,
+        "5": 52.5
+    },
+    "run_id": 2380851029845156022,
+    "model": "TimeSeriesCNN",
+    "num_server_rounds": 5,
+    "epochs": 2,
+    "strategy": "FedAvg"
+}

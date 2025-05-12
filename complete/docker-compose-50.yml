@@ -1,0 +1,2063 @@
+services:
+  # create a SuperLink service
+  superlink:
+    image: flwr/superlink:${FLWR_VERSION:-1.17.0}
+    container_name: SuperLink
+    environment:
+      - FLWR_LOG_LEVEL=ERROR
+    command:
+      - --insecure
+      - --isolation
+      - process
+    ports:
+      - 9093:9093
+
+  # create a ServerApp service
+  serverapp-1:
+    image: flwr_serverapp:0.0.5
+    command:
+      - --insecure
+      - --serverappio-api-address
+      - superlink:9091
+    restart: on-failure:3
+    volumes:
+      - "../output:/app/output"
+    environment:
+      - FLWR_LOG_LEVEL=ERROR
+    container_name: ServerApp-1
+    depends_on:
+      - superlink
+
+  # create 50 SuperNode services with different node configs
+  
+  supernode-1:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-1
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9094
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=0 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-2:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-2
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9095
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=1 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-3:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-3
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9096
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=2 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-4:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-4
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9097
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=3 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-5:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-5
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9098
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=4 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-6:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-6
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9099
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=5 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-7:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-7
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9100
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=6 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-8:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-8
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9101
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=7 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-9:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-9
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9102
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=8 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-10:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-10
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9103
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=9 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-11:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-11
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9104
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=10 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-12:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-12
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9105
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=11 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-13:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-13
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9106
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=12 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-14:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-14
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9107
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=13 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-15:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-15
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9108
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=14 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-16:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-16
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9109
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=15 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-17:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-17
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9110
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=16 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-18:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-18
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9111
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=17 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-19:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-19
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9112
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=18 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-20:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-20
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9113
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=19 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-21:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-21
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9114
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=20 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-22:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-22
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9115
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=21 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-23:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-23
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9116
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=22 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-24:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-24
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9117
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=23 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-25:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-25
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9118
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=24 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-26:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-26
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9119
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=25 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-27:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-27
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9120
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=26 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-28:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-28
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9121
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=27 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-29:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-29
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9122
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=28 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-30:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-30
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9123
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=29 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-31:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-31
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9124
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=30 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-32:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-32
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9125
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=31 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-33:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-33
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9126
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=32 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-34:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-34
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9127
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=33 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-35:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-35
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9128
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=34 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-36:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-36
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9129
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=35 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-37:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-37
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9130
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=36 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-38:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-38
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9131
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=37 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-39:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-39
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9132
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=38 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-40:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-40
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9133
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=39 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-41:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-41
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9134
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=40 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-42:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-42
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9135
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=41 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-43:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-43
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9136
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=42 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-44:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-44
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9137
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=43 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-45:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-45
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9138
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=44 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-46:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-46
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9139
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=45 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-47:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-47
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9140
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=46 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-48:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-48
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9141
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=47 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-49:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-49
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9142
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=48 num-partitions=50"
+    depends_on:
+      - superlink
+  
+  supernode-50:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-50
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:9143
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id=49 num-partitions=50"
+    depends_on:
+      - superlink
+  
+
+  # create 50 ClientApp services
+  
+  clientapp-1:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-1:9094
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-1
+    depends_on:
+      - supernode-1
+  
+  clientapp-2:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-2:9095
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-2
+    depends_on:
+      - supernode-2
+  
+  clientapp-3:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-3:9096
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-3
+    depends_on:
+      - supernode-3
+  
+  clientapp-4:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-4:9097
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-4
+    depends_on:
+      - supernode-4
+  
+  clientapp-5:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-5:9098
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-5
+    depends_on:
+      - supernode-5
+  
+  clientapp-6:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-6:9099
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-6
+    depends_on:
+      - supernode-6
+  
+  clientapp-7:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-7:9100
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-7
+    depends_on:
+      - supernode-7
+  
+  clientapp-8:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-8:9101
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-8
+    depends_on:
+      - supernode-8
+  
+  clientapp-9:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-9:9102
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-9
+    depends_on:
+      - supernode-9
+  
+  clientapp-10:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-10:9103
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-10
+    depends_on:
+      - supernode-10
+  
+  clientapp-11:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-11:9104
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-11
+    depends_on:
+      - supernode-11
+  
+  clientapp-12:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-12:9105
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-12
+    depends_on:
+      - supernode-12
+  
+  clientapp-13:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-13:9106
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-13
+    depends_on:
+      - supernode-13
+  
+  clientapp-14:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-14:9107
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-14
+    depends_on:
+      - supernode-14
+  
+  clientapp-15:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-15:9108
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-15
+    depends_on:
+      - supernode-15
+  
+  clientapp-16:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-16:9109
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-16
+    depends_on:
+      - supernode-16
+  
+  clientapp-17:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-17:9110
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-17
+    depends_on:
+      - supernode-17
+  
+  clientapp-18:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-18:9111
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-18
+    depends_on:
+      - supernode-18
+  
+  clientapp-19:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-19:9112
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-19
+    depends_on:
+      - supernode-19
+  
+  clientapp-20:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-20:9113
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-20
+    depends_on:
+      - supernode-20
+  
+  clientapp-21:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-21:9114
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-21
+    depends_on:
+      - supernode-21
+  
+  clientapp-22:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-22:9115
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-22
+    depends_on:
+      - supernode-22
+  
+  clientapp-23:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-23:9116
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-23
+    depends_on:
+      - supernode-23
+  
+  clientapp-24:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-24:9117
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-24
+    depends_on:
+      - supernode-24
+  
+  clientapp-25:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-25:9118
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-25
+    depends_on:
+      - supernode-25
+  
+  clientapp-26:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-26:9119
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-26
+    depends_on:
+      - supernode-26
+  
+  clientapp-27:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-27:9120
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-27
+    depends_on:
+      - supernode-27
+  
+  clientapp-28:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-28:9121
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-28
+    depends_on:
+      - supernode-28
+  
+  clientapp-29:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-29:9122
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-29
+    depends_on:
+      - supernode-29
+  
+  clientapp-30:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-30:9123
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-30
+    depends_on:
+      - supernode-30
+  
+  clientapp-31:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-31:9124
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-31
+    depends_on:
+      - supernode-31
+  
+  clientapp-32:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-32:9125
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-32
+    depends_on:
+      - supernode-32
+  
+  clientapp-33:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-33:9126
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-33
+    depends_on:
+      - supernode-33
+  
+  clientapp-34:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-34:9127
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-34
+    depends_on:
+      - supernode-34
+  
+  clientapp-35:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-35:9128
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-35
+    depends_on:
+      - supernode-35
+  
+  clientapp-36:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-36:9129
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-36
+    depends_on:
+      - supernode-36
+  
+  clientapp-37:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-37:9130
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-37
+    depends_on:
+      - supernode-37
+  
+  clientapp-38:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-38:9131
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-38
+    depends_on:
+      - supernode-38
+  
+  clientapp-39:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-39:9132
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-39
+    depends_on:
+      - supernode-39
+  
+  clientapp-40:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-40:9133
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-40
+    depends_on:
+      - supernode-40
+  
+  clientapp-41:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-41:9134
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-41
+    depends_on:
+      - supernode-41
+  
+  clientapp-42:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-42:9135
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-42
+    depends_on:
+      - supernode-42
+  
+  clientapp-43:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-43:9136
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-43
+    depends_on:
+      - supernode-43
+  
+  clientapp-44:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-44:9137
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-44
+    depends_on:
+      - supernode-44
+  
+  clientapp-45:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-45:9138
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-45
+    depends_on:
+      - supernode-45
+  
+  clientapp-46:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-46:9139
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-46
+    depends_on:
+      - supernode-46
+  
+  clientapp-47:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-47:9140
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-47
+    depends_on:
+      - supernode-47
+  
+  clientapp-48:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-48:9141
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-48
+    depends_on:
+      - supernode-48
+  
+  clientapp-49:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-49:9142
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-49
+    depends_on:
+      - supernode-49
+  
+  clientapp-50:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-50:9143
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-50
+    depends_on:
+      - supernode-50
+  
+
+  master:
+    build:
+      context: ${PROJECT_DIR:-../master_service}  # Path to your master service code
+      dockerfile_inline: |
+        FROM python:3.11-slim
+
+        # Set the working directory in the container
+        WORKDIR /app
+
+        # Copy requirements.txt and install dependencies
+        COPY requirements.txt . 
+        RUN pip install --no-cache-dir -r requirements.txt
+
+        # Copy the rest of the app code into the container
+        COPY . . 
+        # Expose Flask API port
+        EXPOSE 5000
+
+        # Set the command to run your Flask app
+        CMD ["python", "master_app.py"]
+    container_name: Master
+    environment:
+      - FLWR_LOG_LEVEL=ERROR
+    ports:
+      - "5000:5000"  # Expose Flask API to the host on port 5000
+    volumes:
+      - "../../flower-app:/app/flower-app"  # Mount the code directory to the container

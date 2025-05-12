@@ -1,0 +1,103 @@
+services:
+  # create a SuperLink service
+  superlink:
+    image: flwr/superlink:${FLWR_VERSION:-1.17.0}
+    container_name: SuperLink
+    environment:
+      - FLWR_LOG_LEVEL=ERROR
+    command:
+      - --insecure
+      - --isolation
+      - process
+    ports:
+      - 9093:9093
+
+  # create a ServerApp service
+  serverapp-1:
+    image: flwr_serverapp:0.0.5
+    command:
+      - --insecure
+      - --serverappio-api-address
+      - superlink:9091
+    restart: on-failure:3
+    volumes:
+      - "../output:/app/output"
+    environment:
+      - FLWR_LOG_LEVEL=ERROR
+    container_name: ServerApp-1
+    depends_on:
+      - superlink
+
+  # create 50 SuperNode services with different node configs
+  {% for i in range(1, 11) %}
+  supernode-{{ i }}:
+    image: flwr/supernode:${FLWR_VERSION:-1.17.0}
+    container_name: SuperNode-{{ i }}
+    command:
+      - --insecure
+      - --superlink
+      - superlink:9092
+      - --clientappio-api-address
+      - 0.0.0.0:{{ 9093 + i}}
+      - --isolation
+      - process
+      - --node-config
+      - "partition-id={{i - 1}} num-partitions=50"
+    depends_on:
+      - superlink
+  {% endfor %}
+
+  # create 50 ClientApp services
+  {% for i in range(1, 11) %}
+  clientapp-{{ i }}:
+    image: flwr_clientapp:0.0.5
+    command:
+      - --insecure
+      - --clientappio-api-address
+      - supernode-{{ i }}:{{ 9093 + i }}
+    deploy:
+      resources:
+        limits:
+          cpus: "16"
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    stop_signal: SIGINT
+    container_name: clientApp-{{ i }}
+    depends_on:
+      - supernode-{{ i }}
+  {% endfor %}
+
+  master:
+    build:
+      context: ${PROJECT_DIR:-../master_service}  # Path to your master service code
+      dockerfile_inline: |
+        FROM python:3.11-slim
+
+        # Set the working directory in the container
+        WORKDIR /app
+
+        # Copy requirements.txt and install dependencies
+        COPY requirements.txt . 
+        RUN pip install --no-cache-dir -r requirements.txt
+
+        # Copy the rest of the app code into the container
+        COPY . . 
+        # Expose Flask API port
+        EXPOSE 5000
+
+        # Set the command to run your Flask app
+        CMD ["python", "master_app.py"]
+    container_name: Master
+    environment:
+      - FLWR_LOG_LEVEL=ERROR
+    ports:
+      - "5000:5000"  # Expose Flask API to the host on port 5000
+    volumes:
+      - "../../flower-app:/app/flower-app"  # Mount the code directory to the container

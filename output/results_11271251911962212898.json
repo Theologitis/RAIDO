@@ -1,0 +1,14 @@
+{
+    "weighted average accuracy": {
+        "1": 10.14,
+        "2": 10.14,
+        "3": 10.14,
+        "4": 10.14,
+        "5": 10.11
+    },
+    "run_id": 11271251911962212898,
+    "model": "ResNetModel",
+    "num_server_rounds": 5,
+    "epochs": 5,
+    "strategy": "FedYogi"
+}
