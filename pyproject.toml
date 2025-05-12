@@ -32,7 +32,7 @@ clientapp = "flowerapp.client_app:app"
 
 [tool.flwr.app.config]
 data_url = ""
-num-server-rounds = 5
+num-server-rounds = 100
 model.name = "SimpleCNN"
 model.options.input_dim = 400       # cifar
 # model.options.hidden_dims.x = 10    # [10,20]
@@ -43,7 +43,7 @@ model.path = "output/global_model.pth"
 task.name = "ImageClassification"
 # Hyperparameters
 train.epochs = 5
-train.lr = 0.01
+train.lr = 0.036
 train.batch_size = 128
 # Strategy Options
 strategy.name = "FedAvgPlus"
@@ -71,9 +71,9 @@ strategy.FedOpt.options.eta_l = 0.05
 strategy.FedOpt.options.tau = 1e-8
 strategy.FedOpt.options.beta_1 = 0.9
 strategy.FedOpt.options.beta_2 = 0.99
-strategy.FedYogi.options.eta = 0.05
-strategy.FedYogi.options.eta_l = 0.05
-strategy.FedYogi.options.tau = 1e-8
+strategy.FedYogi.options.eta = 0.01
+strategy.FedYogi.options.eta_l = 0.0316
+strategy.FedYogi.options.tau = 0.01
 strategy.FedYogi.options.beta_1 = 0.9
 strategy.FedYogi.options.beta_2 = 0.99
 strategy.QFedAvg.options.q_param = 0.2
@@ -82,7 +82,7 @@ strategy.FedTrimmedAvg.options.beta = 0.2
 strategy.FedXgbCyclic.options.num_evaluation_clients = ""
 strategy.FedXgbCyclic.options.num_fit_clients = ""
 # Parameters for the Differential Privacy
-dp.flag = "true"
+dp.flag = "false"
 dp.side = "server"
 dp.type = "adaptive"
 dp.fixed.noise_multiplier = 0.1
