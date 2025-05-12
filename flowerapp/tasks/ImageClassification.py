@@ -1,12 +1,13 @@
 import torch
 from torch.utils.data import DataLoader
 from torch.nn import CrossEntropyLoss
-from torch.optim import Adam
+from torch.optim import Adam , SGD
 from torchvision.transforms import Compose, ToTensor, Normalize
 from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner
 from flowerapp.tasks.Task import Task
-from flowerapp.utils import get_weights
+from flowerapp.utils import get_weights ,get_optimizer
+
 class ImageClassification(Task):
     
     def __init__(self, model, device=None):
@@ -52,15 +53,17 @@ class ImageClassification(Task):
 
         return trainloader, testloader
 
-    def train(self, trainloader: DataLoader, epochs=1, lr=0.001, proximal_mu=0.0):
+    def train(self, trainloader: DataLoader, epochs=1, lr=0.001, proximal_mu=0.0, server_control_variate=None,client_control_variate=None):
         """Train the model."""
         self.model.train()
-        self.optimizer = Adam(self.model.parameters(), lr=lr)
+        self.optimizer = get_optimizer("SGD",self.model.parameters(), lr=lr)
         global_weights = get_weights(self.model)
         
         for epoch in range(epochs):
             running_loss = 0.0
+            
             for batch in trainloader:
+                
                 images = batch["img"].to(self.device)
                 labels = batch["label"].to(self.device)
 
@@ -75,17 +78,36 @@ class ImageClassification(Task):
                         prox_term += ((param - global_param) ** 2).sum()
 
                     loss += (proximal_mu / 2) * prox_term
-                    # ========================================== #
-                
+                # ========================================== #
+               
                 loss.backward()
+                max_grad = max(p.grad.abs().max().item() for p in self.model.parameters() if p.grad is not None)
+                #print(f"Max gradient before correction: {max_grad}")
+                #=== Add control variant === for Scaffold strategy
+                if server_control_variate is not None and client_control_variate is not None:
+                    with torch.no_grad():
+                        for i, param in enumerate(self.model.parameters()):
+                            if param.grad is not None:
+                                correction = torch.tensor(server_control_variate[i], device=self.device) - torch.tensor(client_control_variate[i], device=self.device)
+                                param.grad += torch.clamp(correction, -1.0, 1.0)
+                # ========================================== #
+                max_grad = max(p.grad.abs().max().item() for p in self.model.parameters() if p.grad is not None)
+                #print(f"Max gradient after correction: {max_grad}")
                 self.optimizer.step()
-
                 running_loss += loss.item()
-
+                for param in self.model.parameters():
+                    if torch.isnan(param.grad).any():
+                        print("NaN in gradients!")
             avg_loss = running_loss / len(trainloader)
             print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.4f}")
-
-        return avg_loss
+            print(f"Epoch {epoch+1}, Gradients: {param.grad.max()}")
+            updated_weights = get_weights(self.model)
+            control_variate = [
+                client_control_variate[i] - server_control_variate[i] + 
+                (global_weights[i] - updated_weights[i]) / (lr * epochs)
+                for i in range(len(updated_weights))
+            ]
+        return avg_loss , control_variate
 
 
     def test(self, testloader: DataLoader):

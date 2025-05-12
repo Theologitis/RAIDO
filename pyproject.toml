@@ -17,7 +17,8 @@ dependencies = [
     "pandas",
     "numpy",
     "openpyxl",
-    "omegaconf"
+    "omegaconf",
+    "avalanche-lib"
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -32,21 +33,21 @@ clientapp = "flowerapp.client_app:app"
 
 [tool.flwr.app.config]
 data_url = ""
-num-server-rounds = 5
+num-server-rounds = 100
+task.name = "ImageClassification"
 model.name = "SimpleCNN"
-model.options.input_dim = 400       # cifar
+model.options.type = "avalan"
+model.options.input_dim = 400       # cifar 400 , timeseries 7
 # model.options.hidden_dims.x = 10    # [10,20]
 # model.options.hidden_dims.y = 20
 model.options.output_dim = 10
-model.pretrained = "false"
+model.pre_trained = "false"
 model.path = "output/global_model.pth"
-task.name = "ImageClassification"
-# Hyperparameters
-train.epochs = 5
-train.lr = 0.01
+train.epochs = 1
+train.lr = 0.0316
 train.batch_size = 128
 # Strategy Options
-strategy.name = "FedAvgPlus"
+strategy.name = "FedYogi"
 strategy.options.fraction_fit = 1.0
 strategy.options.fraction_evaluate = 1.0
 strategy.options.min_fit_clients = 2
@@ -54,9 +55,10 @@ strategy.options.min_evaluate_clients = 2
 strategy.options.min_available_clients = 2
 strategy.options.accept_failures = true
 # strategy.options.inplace = true
+strategy.Scaffold.options.eta_g = 1.0
 strategy.FedAvgPlus.options.lr_new = 0.005
 strategy.FedAvgPlus.options.epochs_new = 1
-strategy.FedAvgPlus.options.decay_round = 1
+strategy.FedAvgPlus.options.decay_round = 20
 strategy.FedProx.options.proximal_mu = 0.5
 strategy.Bulyan.options.num_malicious_clients = 1
 strategy.FedAvgM.options.server_learning_rate = 0.01
@@ -71,9 +73,9 @@ strategy.FedOpt.options.eta_l = 0.05
 strategy.FedOpt.options.tau = 1e-8
 strategy.FedOpt.options.beta_1 = 0.9
 strategy.FedOpt.options.beta_2 = 0.99
-strategy.FedYogi.options.eta = 0.05
-strategy.FedYogi.options.eta_l = 0.05
-strategy.FedYogi.options.tau = 1e-8
+strategy.FedYogi.options.eta = 0.01
+strategy.FedYogi.options.eta_l = 0.0316
+strategy.FedYogi.options.tau = 0.01 #default 1e-3
 strategy.FedYogi.options.beta_1 = 0.9
 strategy.FedYogi.options.beta_2 = 0.99
 strategy.QFedAvg.options.q_param = 0.2
@@ -82,7 +84,7 @@ strategy.FedTrimmedAvg.options.beta = 0.2
 strategy.FedXgbCyclic.options.num_evaluation_clients = ""
 strategy.FedXgbCyclic.options.num_fit_clients = ""
 # Parameters for the Differential Privacy
-dp.flag = "true"
+dp.flag = "false"
 dp.side = "server"
 dp.type = "adaptive"
 dp.fixed.noise_multiplier = 0.1
@@ -94,12 +96,12 @@ dp.adaptive.initial_clipping_norm= 0.1
 dp.adaptive.target_clipped_quantile = 0.5
 dp.adaptive.clip_norm_lr = 0.2
 dp.adaptive.clipped_count_stddev = ""   # optional
-
 num-sampled-clients = 2
+
 # Parameters for the SecAgg+ protocol
 secagg.flag = "false"
-num-shares = 10
-secagg.reconstruction-threshold = 2
+secagg.num_shares = 10
+secagg.reconstruction_threshold = 2
 
 
 [tool.flwr.federations]
@@ -117,5 +119,5 @@ address = "superlink:9093"
 insecure = true
 
 [tool.flwr.federations.remote-deployment]
-address = "160.40.48.201:9093"
-root-certificates = "./distributed/superlink-certificates/ca.crt"
+address = "160.40.53.93:9093"
+insecure = true

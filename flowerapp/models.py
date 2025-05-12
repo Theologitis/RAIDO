@@ -131,7 +131,7 @@ class ResNetModel(nn.Module):
     """
     def __init__(self) -> None:
         super(ResNetModel, self).__init__()
-        self.model = resnet18(pretrained=False) # Load ResNet18 model without pretrained weights
+        self.model = resnet18(weights=None) # Load ResNet18 model without pretrained weights
         self.model.fc = nn.Linear(self.model.fc.in_features, 10)  # Adjust for CIFAR-10 classes
 
     def forward(self, x):
@@ -139,8 +139,6 @@ class ResNetModel(nn.Module):
 
 
 ### new models ###
-
-
 class TimeSeriesLSTM(nn.Module):
     """
     LSTM-based model for time series classification with multiple pathways.
@@ -371,7 +369,6 @@ class TimeSeriesCNN(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
-        
         return x
     
 

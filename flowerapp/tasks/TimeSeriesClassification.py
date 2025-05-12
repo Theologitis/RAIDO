@@ -5,9 +5,195 @@ import torch
 from pathlib import Path
 from flowerapp.tasks.Task import Task
 import time
-from torch.nn import CrossEntropyLoss , MSELoss
+import torch.nn as nn
 from torch.optim import Adam
 
+class TimeSeriesClassification(Task):
+    def __init__(self, model, device=None):
+        self.model = model
+        self.device = device
+        self.model.to(self.device)
+        
+    def load_data(self, client_data_path, batch_size=32, config={}):
+        MODEL_NAME = "TemperatureForecastMod"
+        # Find all Excel files in the data directory
+        data_path = Path(client_data_path)
+        excel_files = list(data_path.glob('*.xlsx')) + list(data_path.glob('*.xls'))
+        
+        if not excel_files:
+            raise FileNotFoundError(f"No Excel files found in {client_data_path}")
+        
+        # Look specifically for SH_Load_vars_labeled.xlsx - this is critical for temperature forecasting
+        sh_files = [f for f in excel_files if "SH_Load_vars_labeled" in f.name]
+        
+        if not sh_files and MODEL_NAME == "TemperatureForecastModel":
+            raise FileNotFoundError(f"SH_Load_vars_labeled.xlsx not found in {client_data_path}. This file is required for temperature forecasting.")
+        
+        # Use the SH_Load_vars_labeled file if found, otherwise use first Excel file
+        file_path = sh_files[0] if sh_files else excel_files[0]
+        print(f"Loading time series data from: {file_path}")
+        
+        try:
+        
+            # Create datasets
+            trainset = ExcelTimeSeriesDataset(
+                file_path=file_path,
+                train=True,
+                train_ratio=0.8,  # 80% for training, 20% for testing
+                verbose=True
+            )
+            
+            testset = ExcelTimeSeriesDataset(
+                file_path=file_path,
+                train=False,
+                train_ratio=0.8,
+                verbose=False
+            )
+            
+            
+            # Get number of features from the dataset
+            num_features = trainset.features.shape[1]
+            print(f"Feature tensor shape: {trainset.features.shape}")
+
+            # For classification problem
+            unique_labels = torch.unique(trainset.labels)
+            num_classes = len(unique_labels)
+            # Ensure labels are long for classification
+            trainset.labels = trainset.labels.long()
+            testset.labels = testset.labels.long()
+            
+            
+            # Handle dataset with too few samples
+            min_batch_size = 1
+            if len(trainset) < batch_size or len(testset) < batch_size:
+                new_batch_size = max(min_batch_size, min(len(trainset), len(testset)))
+                print(f"Adjusting batch size from {batch_size} to {new_batch_size} due to small dataset size")
+                batch_size = new_batch_size
+            
+            # Create data loaders
+            trainloader = DataLoader(
+                trainset,
+                batch_size=batch_size,
+                shuffle=True,
+                drop_last=False  # Keep all samples even if they don't form complete batches
+            )
+            
+            testloader = DataLoader(
+                testset,
+                batch_size=batch_size,
+                drop_last=False
+            )
+            
+            # For debugging: check the shape of a batch
+            for inputs, labels in trainloader:
+                print(f"Batch input shape: {inputs.shape}")
+                print(f"Batch label shape: {labels.shape}")
+                print(f"Batch label dtype: {labels.dtype}")
+                break
+            
+            return trainloader, testloader
+        
+        except Exception as e:
+            
+            print(f"Error loading time series data: {e}")
+            # Add more detailed error information
+            import traceback
+            print("Detailed error traceback:")
+            traceback.print_exc()
+            raise
+
+    def train(self, trainloader, epochs=1, lr=0.001, proximal_mu=0.0):
+        """
+        Trains the model on the provided data and tracks metrics.
+        Handles temperature forecasting with proper data types.
+        
+        Args:
+            model (nn.Module): Neural network model to train
+            trainloader (DataLoader): DataLoader containing training data
+            epochs (int): Number of training epochs
+            lr (float): learning rate
+        
+        Returns:
+            list: List of tuples containing metrics for each epoch
+        """
+        # Set random seed (time)
+        seed = int(time.time()) % 10000
+        torch.manual_seed(seed)
+        
+        loss_fn = nn.CrossEntropyLoss()
+        optimizer = Adam(self.model.parameters(), lr=0.001)
+        all_metrics = []
+
+        for epoch in range(epochs):
+            running_loss = 0.0
+            correct = 0
+            total = 0
+
+            for inputs, labels in trainloader:
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
+
+                outputs = self.model(inputs)
+                loss = loss_fn(outputs, labels)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                running_loss += loss.item() * labels.size(0)
+
+                _, predicted = torch.max(outputs, 1)
+                correct += (predicted == labels).sum().item()
+                total += labels.size(0)
+
+            epoch_loss = running_loss / len(trainloader.dataset)
+            accuracy = 100 * correct / total
+
+            print(f"[Classification] Epoch {epoch+1}/{epochs} | Loss: {epoch_loss:.4f} | Accuracy: {accuracy:.2f}%")
+            all_metrics.append((epoch_loss, accuracy))
+
+        return all_metrics
+
+    def test(self, testloader):
+        """
+        Evaluates the model on test data.
+        Updated to handle both classification and regression tasks.
+        
+        Args:
+            model (nn.Module): Neural network model to evaluate
+            testloader (DataLoader): DataLoader containing test data
+        
+        Returns:
+            tuple: For classification: (average_loss, accuracy)
+                For regression: (average_loss, rmse, mae)
+        """
+        self.model.eval()
+        criterion = nn.CrossEntropyLoss(reduction='sum')
+        
+        total_loss = 0.0
+        total_correct = 0
+        total_samples = 0
+
+        torch.manual_seed(42)
+
+        with torch.no_grad():
+            for inputs, labels in testloader:
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
+                outputs = self.model(inputs)
+
+                loss = criterion(outputs, labels).item()
+                total_loss += loss
+
+                _, predicted = torch.max(outputs, 1)
+                total_correct += (predicted == labels).sum().item()
+                total_samples += labels.size(0)
+
+        avg_loss = total_loss / total_samples
+        accuracy = total_correct / total_samples
+
+        print(f"[Classification Test] Loss: {avg_loss:.4f} | Accuracy: {accuracy * 100:.2f}%")
+        return avg_loss, accuracy
+    
+    
 class ExcelTimeSeriesDataset(Dataset):
     """
     Custom dataset for loading time series data from Excel files.
@@ -533,728 +719,3 @@ class ExcelTimeSeriesDataset(Dataset):
             # Need to truncate
             self.features = self.features[:, :target_dim]
             print(f"Truncated features to shape: {self.features.shape}")
-
-
-# class TimeSeriesClassification(Task):
-    
-#     def __init__(self, model, device=None):
-#         """
-#         Initialize the ImageClassification task.
-
-#         Args:
-#             model (nn.Module): The PyTorch model for image classification.
-#             device (str or torch.device, optional): Device to run on. Defaults to CUDA if available.
-#         """
-#         self.model = model
-#         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-#         self.model.to(self.device)
-#         self.optimizer = None  # Will be initialized during training
-#         self.config = {} # FederatedDataset instance
-        
-    def load_time_series_data(client_data_path, batch_size=32,config={}):
-        """
-        Loads time series data from Excel files for federated learning.
-        Specifically targets SH_Load_vars_labeled.xlsx for temperature forecasting.
-        
-        Args:
-            client_data_path (str): Path to client's data directory
-            batch_size (int): Batch size for DataLoader
-            
-        Returns:
-            tuple: (train_loader, test_loader, num_features, num_classes)
-        """
-        ## CHeck if available and read xlsx file
-        MODEL_NAME = "TemperatureForecastModel"
-        # Find all Excel files in the data directory
-        data_path = Path(client_data_path)
-        excel_files = list(data_path.glob('*.xlsx')) + list(data_path.glob('*.xls'))
-        
-        if not excel_files:
-            raise FileNotFoundError(f"No Excel files found in {client_data_path}")
-        
-        # Look specifically for SH_Load_vars_labeled.xlsx - this is critical for temperature forecasting
-        sh_files = [f for f in excel_files if "SH_Load_vars_labeled" in f.name]
-        
-        if not sh_files and MODEL_NAME == "TemperatureForecastModel":
-            raise FileNotFoundError(f"SH_Load_vars_labeled.xlsx not found in {client_data_path}. This file is required for temperature forecasting.")
-        
-        # Use the SH_Load_vars_labeled file if found, otherwise use first Excel file
-        file_path = sh_files[0] if sh_files else excel_files[0]
-        print(f"Loading time series data from: {file_path}")
-        
-        try:
-            # Check if we're doing temperature forecasting
-            is_temp_forecast = MODEL_NAME == "TemperatureForecastModel"
-            
-            if is_temp_forecast:
-                print("="*80)
-                print("PREPARING TEMPERATURE FORECASTING MODEL WITH SH_LOAD_VARS_LABELED DATA")
-                print("="*80)
-        #######
-        
-            # Create datasets
-            trainset = ExcelTimeSeriesDataset(
-                file_path=file_path,
-                train=True,
-                train_ratio=0.8,  # 80% for training, 20% for testing
-                verbose=True
-            )
-            
-            # For temperature forecasting, we need special preparation
-            if is_temp_forecast:
-                print("Preparing dataset for temperature forecasting...")
-                # Get forecast parameters from config
-                target_hour = config.get("forecast_target_hour", 14)
-                lookback_days = config.get("forecast_lookback_days", 7)
-                
-                # Prepare the dataset for forecasting
-                success = trainset.prepare_temperature_forecast(
-                    target_column='airTemperature',
-                    target_hour=target_hour,
-                    lookback_days=lookback_days
-                )
-                
-                if not success:
-                    raise RuntimeError("Failed to prepare temperature forecast data. Check if the data contains temperature readings.")
-            
-            testset = ExcelTimeSeriesDataset(
-                file_path=file_path,
-                train=False,
-                train_ratio=0.8,
-                verbose=False
-            )
-            
-            # Also prepare test set for temperature forecasting
-            if is_temp_forecast:
-                success = testset.prepare_temperature_forecast(
-                    target_column='airTemperature',
-                    target_hour=config.get("forecast_target_hour", 14),
-                    lookback_days=config.get("forecast_lookback_days", 7)
-                )
-                if not success:
-                    print("Warning: Could not prepare test set for temperature forecasting.")
-            
-            # Get number of features from the dataset
-            num_features = trainset.features.shape[1]
-            print(f"Feature tensor shape: {trainset.features.shape}")
-            
-            # Check if we need to use fixed dimensions for TemperatureForecastModel
-            if MODEL_NAME == "TemperatureForecastModel":
-                # Get fixed dimension from config or use default
-                fixed_dim = config.get("ts_input_dim", 8)
-                
-                # Always ensure we're using exactly 8 features for temperature forecasting
-                # This ensures consistent model parameters across all clients
-                if num_features != fixed_dim:
-                    print(f"Adjusting feature dimensions from {num_features} to {fixed_dim} for temperature forecasting")
-                    trainset.ensure_feature_dimensions(fixed_dim)
-                    testset.ensure_feature_dimensions(fixed_dim)
-                    num_features = fixed_dim
-                    
-                # Update config with the fixed dimension
-                config["ts_input_dim"] = fixed_dim
-                print(f"Set fixed input dimension to {fixed_dim} for temperature forecasting")
-            
-            # Update the config with the actual feature count
-            config["ts_input_dim"] = num_features
-            print(f"Setting ts_input_dim in config to: {num_features}")
-            
-            # Get number of classes from unique labels
-            if is_temp_forecast:
-                # For regression problem (temperature forecasting)
-                unique_labels = 1  # Single continuous output
-                num_classes = 1
-                # Ensure labels are float for regression
-                trainset.labels = trainset.labels.float()
-                testset.labels = testset.labels.float()
-            else:
-                # For classification problem
-                unique_labels = torch.unique(trainset.labels)
-                num_classes = len(unique_labels)
-                # Ensure labels are long for classification
-                trainset.labels = trainset.labels.long()
-                testset.labels = testset.labels.long()
-            
-            # Update config with detected class count
-            config["ts_output_dim"] = num_classes
-            config["ts_num_classes"] = num_classes
-            print(f"Setting output_dim to: {num_classes}")
-            
-            # Handle dataset with too few samples
-            min_batch_size = 1
-            if len(trainset) < batch_size or len(testset) < batch_size:
-                new_batch_size = max(min_batch_size, min(len(trainset), len(testset)))
-                print(f"Adjusting batch size from {batch_size} to {new_batch_size} due to small dataset size")
-                batch_size = new_batch_size
-            
-            # Create data loaders
-            trainloader = DataLoader(
-                trainset,
-                batch_size=batch_size,
-                shuffle=True,
-                drop_last=False  # Keep all samples even if they don't form complete batches
-            )
-            
-            testloader = DataLoader(
-                testset,
-                batch_size=batch_size,
-                drop_last=False
-            )
-            
-            # For debugging: check the shape of a batch
-            for inputs, labels in trainloader:
-                print(f"Batch input shape: {inputs.shape}")
-                print(f"Batch label shape: {labels.shape}")
-                print(f"Batch label dtype: {labels.dtype}")
-                break
-            
-            return trainloader, testloader, num_features, num_classes
-        
-        except Exception as e:
-            print(f"Error loading time series data: {e}")
-            # Add more detailed error information
-            import traceback
-            print("Detailed error traceback:")
-            traceback.print_exc()
-            raise
-#     def train(self, trainloader: DataLoader, epochs=1, lr=0.001):
-#         """
-#         Trains the model on the provided data and tracks metrics.
-#         Handles temperature forecasting with proper data types.
-        
-#         Args:
-#             model (nn.Module): Neural network model to train
-#             trainloader (DataLoader): DataLoader containing training data
-#             epochs (int): Number of training epochs
-        
-#         Returns:
-#             list: List of tuples containing metrics for each epoch
-#         """
-#         # Set random seed (time)
-#         seed = int(time.time()) % 10000
-#         torch.manual_seed(seed)
-        
-#         # Check if we're doing regression (temperature forecasting) or classification
-#         #is_regression = MODEL_NAME == "TemperatureForecastModel"
-#         is_regression = True
-#         # Define appropriate loss function
-#         if is_regression:
-#             loss_fn = MSELoss()  # Mean Squared Error for regression
-#             print("Using MSE loss for temperature regression")
-#         else:
-#             loss_fn = CrossEntropyLoss()  # Cross Entropy for classification
-        
-#         # Define optimizer
-#         optimizer = Adam(self.model.parameters(), lr=lr)
-        
-#         self.model.train()
-#         all_metrics = []
-        
-#         for epoch in range(epochs):
-#             running_loss = 0.0
-            
-#             # For classification metrics
-#             correct = 0
-#             total = 0
-            
-#             # For regression metrics
-#             if is_regression:
-#                 sum_squared_error = 0.0
-#                 sum_absolute_error = 0.0
-#                 n_samples = 0
-            
-#             for inputs, labels in trainloader:
-#                 inputs, labels = inputs.to(self.device), labels.to(self.device)
-                
-#                 # Forward pass
-#                 outputs = self.model(inputs)
-                
-#                 # For regression, ensure outputs and labels have same shape
-#                 if is_regression:
-#                     # Make sure both are properly shaped for MSE loss
-#                     if outputs.shape != labels.shape:
-#                         outputs = outputs.view(labels.shape)
-                
-#                 # Calculate loss
-#                 loss = loss_fn(outputs, labels)
-                
-#                 # Backward pass and optimization
-#                 optimizer.zero_grad()
-#                 loss.backward()
-#                 optimizer.step()
-                
-#                 # Track metrics
-#                 running_loss += loss.item() * labels.size(0)  # Weighted by batch size
-                
-#                 if is_regression:
-#                     # Track regression metrics
-#                     with torch.no_grad():
-#                         pred = outputs.view(-1)
-#                         target = labels.view(-1)
-#                         squared_error = ((pred - target) ** 2).sum().item()
-#                         absolute_error = (pred - target).abs().sum().item()
-                        
-#                         sum_squared_error += squared_error
-#                         sum_absolute_error += absolute_error
-#                         n_samples += labels.size(0)
-#                 else:
-#                     # Track classification metrics
-#                     _, predicted = torch.max(outputs, 1)
-#                     correct += (predicted == labels).sum().item()
-#                     total += labels.size(0)
-            
-#             # Calculate epoch metrics
-#             epoch_loss = running_loss / len(trainloader.dataset)
-            
-#             if is_regression:
-#                 # Calculate regression metrics
-#                 rmse = (sum_squared_error / n_samples) ** 0.5  # Root Mean Squared Error
-#                 mae = sum_absolute_error / n_samples  # Mean Absolute Error
-                
-#                 print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}, RMSE: {rmse:.4f}°C, MAE: {mae:.4f}°C")
-#                 all_metrics.append((epoch_loss, rmse, mae))
-#             else:
-#                 # Calculate classification metrics
-#                 epoch_accuracy = 100 * correct / total
-                
-#                 print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.2f}%")
-#                 all_metrics.append((epoch_loss, epoch_accuracy))
-        
-#         return all_metrics
-
-        
-#     def test(self, model, testloader):
-#         """
-#         Evaluates the model on test data.
-#         Updated to handle both classification and regression tasks.
-        
-#         Args:
-#             model (nn.Module): Neural network model to evaluate
-#             testloader (DataLoader): DataLoader containing test data
-        
-#         Returns:
-#             tuple: For classification: (average_loss, accuracy)
-#                 For regression: (average_loss, rmse, mae)
-#         """
-#         # Check if we're doing regression or classification
-#         #is_regression = MODEL_NAME == "TemperatureForecastModel"
-#         is_regression = True
-#         # Define appropriate loss function
-#         if is_regression:
-#             criterion = MSELoss(reduction='sum')  # Sum reduction to calculate average later
-#         else:
-#             criterion = CrossEntropyLoss(reduction='sum')
-#         model.eval()
-        
-#         total_loss = 0.0
-        
-#         # For classification
-#         total_correct = 0
-#         total_samples = 0
-        
-#         # For regression
-#         if is_regression:
-#             sum_squared_error = 0.0
-#             sum_absolute_error = 0.0
-        
-#         # Fix random seed for reproducibility during evaluation
-#         torch.manual_seed(42)
-        
-#         # Disable gradient computation for evaluation
-#         with torch.no_grad():
-#             for inputs, labels in testloader:
-#                 batch_size = labels.size(0)
-#                 inputs, labels = inputs.to(self.device), labels.to(self.device)
-                
-#                 # Forward pass
-#                 outputs = model(inputs)
-                
-#                 # For regression, ensure outputs and labels have same shape
-#                 if is_regression:
-#                     if outputs.shape != labels.shape:
-#                         outputs = outputs.view(labels.shape)
-                
-#                 # Calculate loss
-#                 loss = criterion(outputs, labels).item()
-#                 total_loss += loss
-                
-#                 if is_regression:
-#                     # Calculate regression metrics
-#                     pred = outputs.view(-1)
-#                     target = labels.view(-1)
-#                     squared_error = ((pred - target) ** 2).sum().item()
-#                     absolute_error = (pred - target).abs().sum().item()
-                    
-#                     sum_squared_error += squared_error
-#                     sum_absolute_error += absolute_error
-#                     total_samples += batch_size
-#                 else:
-#                     # Calculate classification metrics
-#                     _, predicted = torch.max(outputs, 1)
-#                     total_correct += (predicted == labels).sum().item()
-#                     total_samples += batch_size
-        
-#         # Calculate global metrics
-#         avg_loss = total_loss / total_samples
-        
-#         if is_regression:
-#             # Return regression metrics
-#             rmse = (sum_squared_error / total_samples) ** 0.5
-#             mae = sum_absolute_error / total_samples
-#             return avg_loss, rmse, mae
-#         else:
-#             # Return classification metrics
-#             accuracy = total_correct / total_samples
-#             return avg_loss, accuracy
-
-from sklearn.metrics import root_mean_squared_error, mean_absolute_error
-class TimeSeriesClassification(Task):
-    def __init__(self, model, device=None):
-        self.model=model
-        self.device = device
-
-    def load_data(self, client_data_path, batch_size=32, config={}):
-        MODEL_NAME = "TemperatureForecastModel"
-        # Find all Excel files in the data directory
-        data_path = Path(client_data_path)
-        excel_files = list(data_path.glob('*.xlsx')) + list(data_path.glob('*.xls'))
-        
-        if not excel_files:
-            raise FileNotFoundError(f"No Excel files found in {client_data_path}")
-        
-        # Look specifically for SH_Load_vars_labeled.xlsx - this is critical for temperature forecasting
-        sh_files = [f for f in excel_files if "SH_Load_vars_labeled" in f.name]
-        
-        if not sh_files and MODEL_NAME == "TemperatureForecastModel":
-            raise FileNotFoundError(f"SH_Load_vars_labeled.xlsx not found in {client_data_path}. This file is required for temperature forecasting.")
-        
-        # Use the SH_Load_vars_labeled file if found, otherwise use first Excel file
-        file_path = sh_files[0] if sh_files else excel_files[0]
-        print(f"Loading time series data from: {file_path}")
-        
-        try:
-            # Check if we're doing temperature forecasting
-            is_temp_forecast = MODEL_NAME == "TemperatureForecastModel"
-            
-            if is_temp_forecast:
-                print("="*80)
-                print("PREPARING TEMPERATURE FORECASTING MODEL WITH SH_LOAD_VARS_LABELED DATA")
-                print("="*80)
-        #######
-        
-            # Create datasets
-            trainset = ExcelTimeSeriesDataset(
-                file_path=file_path,
-                train=True,
-                train_ratio=0.8,  # 80% for training, 20% for testing
-                verbose=True
-            )
-            
-            # For temperature forecasting, we need special preparation
-            if is_temp_forecast:
-                print("Preparing dataset for temperature forecasting...")
-                # Get forecast parameters from config
-                target_hour = config.get("forecast_target_hour", 14)
-                lookback_days = config.get("forecast_lookback_days", 7)
-                
-                # Prepare the dataset for forecasting
-                success = trainset.prepare_temperature_forecast(
-                    target_column='airTemperature',
-                    target_hour=target_hour,
-                    lookback_days=lookback_days
-                )
-                
-                if not success:
-                    raise RuntimeError("Failed to prepare temperature forecast data. Check if the data contains temperature readings.")
-            
-            testset = ExcelTimeSeriesDataset(
-                file_path=file_path,
-                train=False,
-                train_ratio=0.8,
-                verbose=False
-            )
-            
-            # Also prepare test set for temperature forecasting
-            if is_temp_forecast:
-                success = testset.prepare_temperature_forecast(
-                    target_column='airTemperature',
-                    target_hour=config.get("forecast_target_hour", 14),
-                    lookback_days=config.get("forecast_lookback_days", 7)
-                )
-                if not success:
-                    print("Warning: Could not prepare test set for temperature forecasting.")
-            
-            # Get number of features from the dataset
-            num_features = trainset.features.shape[1]
-            print(f"Feature tensor shape: {trainset.features.shape}")
-            
-            # Check if we need to use fixed dimensions for TemperatureForecastModel
-            if MODEL_NAME == "TemperatureForecastModel":
-                # Get fixed dimension from config or use default
-                fixed_dim = config.get("ts_input_dim", 8)
-                
-                # Always ensure we're using exactly 8 features for temperature forecasting
-                # This ensures consistent model parameters across all clients
-                if num_features != fixed_dim:
-                    print(f"Adjusting feature dimensions from {num_features} to {fixed_dim} for temperature forecasting")
-                    trainset.ensure_feature_dimensions(fixed_dim)
-                    testset.ensure_feature_dimensions(fixed_dim)
-                    num_features = fixed_dim
-                    
-                # Update config with the fixed dimension
-                config["ts_input_dim"] = fixed_dim
-                print(f"Set fixed input dimension to {fixed_dim} for temperature forecasting")
-            
-            # Update the config with the actual feature count
-            config["ts_input_dim"] = num_features
-            print(f"Setting ts_input_dim in config to: {num_features}")
-            
-            # Get number of classes from unique labels
-            if is_temp_forecast:
-                # For regression problem (temperature forecasting)
-                unique_labels = 1  # Single continuous output
-                num_classes = 1
-                # Ensure labels are float for regression
-                trainset.labels = trainset.labels.float()
-                testset.labels = testset.labels.float()
-            else:
-                # For classification problem
-                unique_labels = torch.unique(trainset.labels)
-                num_classes = len(unique_labels)
-                # Ensure labels are long for classification
-                trainset.labels = trainset.labels.long()
-                testset.labels = testset.labels.long()
-            
-            # Update config with detected class count
-            config["ts_output_dim"] = num_classes
-            config["ts_num_classes"] = num_classes
-            print(f"Setting output_dim to: {num_classes}")
-            
-            # Handle dataset with too few samples
-            min_batch_size = 1
-            if len(trainset) < batch_size or len(testset) < batch_size:
-                new_batch_size = max(min_batch_size, min(len(trainset), len(testset)))
-                print(f"Adjusting batch size from {batch_size} to {new_batch_size} due to small dataset size")
-                batch_size = new_batch_size
-            
-            # Create data loaders
-            trainloader = DataLoader(
-                trainset,
-                batch_size=batch_size,
-                shuffle=True,
-                drop_last=False  # Keep all samples even if they don't form complete batches
-            )
-            
-            testloader = DataLoader(
-                testset,
-                batch_size=batch_size,
-                drop_last=False
-            )
-            
-            # For debugging: check the shape of a batch
-            for inputs, labels in trainloader:
-                print(f"Batch input shape: {inputs.shape}")
-                print(f"Batch label shape: {labels.shape}")
-                print(f"Batch label dtype: {labels.dtype}")
-                break
-            
-            return trainloader, testloader
-        
-        except Exception as e:
-            
-            print(f"Error loading time series data: {e}")
-            # Add more detailed error information
-            import traceback
-            print("Detailed error traceback:")
-            traceback.print_exc()
-            raise
-
-    def train(self, trainloader, epochs=1, lr=0.001):
-        """
-        Trains the model on the provided data and tracks metrics.
-        Handles temperature forecasting with proper data types.
-        
-        Args:
-            model (nn.Module): Neural network model to train
-            trainloader (DataLoader): DataLoader containing training data
-            epochs (int): Number of training epochs
-            lr (float): learning rate
-        
-        Returns:
-            list: List of tuples containing metrics for each epoch
-        """
-        # Set random seed (time)
-        seed = int(time.time()) % 10000
-        torch.manual_seed(seed)
-        
-        # Check if we're doing regression (temperature forecasting) or classification
-        #is_regression = MODEL_NAME == "TemperatureForecastModel"
-        is_regression = True
-        # Define appropriate loss function
-        if is_regression:
-            loss_fn = MSELoss()  # Mean Squared Error for regression
-            print("Using MSE loss for temperature regression")
-        else:
-            loss_fn = CrossEntropyLoss()  # Cross Entropy for classification
-        
-        # Define optimizer
-        optimizer = Adam(self.model.parameters(), lr=lr)
-        
-        self.model.train()
-        all_metrics = []
-        
-        for epoch in range(epochs):
-            running_loss = 0.0
-            
-            # For classification metrics
-            correct = 0
-            total = 0
-            
-            # For regression metrics
-            if is_regression:
-                sum_squared_error = 0.0
-                sum_absolute_error = 0.0
-                n_samples = 0
-            
-            for inputs, labels in trainloader:
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
-                
-                # Forward pass
-                outputs = self.model(inputs)
-                
-                # For regression, ensure outputs and labels have same shape
-                if is_regression:
-                    # Make sure both are properly shaped for MSE loss
-                    if outputs.shape != labels.shape:
-                        outputs = outputs.view(labels.shape)
-                
-                # Calculate loss
-                loss = loss_fn(outputs, labels)
-                
-                # Backward pass and optimization
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                
-                # Track metrics
-                running_loss += loss.item() * labels.size(0)  # Weighted by batch size
-                
-                if is_regression:
-                    # Track regression metrics
-                    with torch.no_grad():
-                        pred = outputs.view(-1)
-                        target = labels.view(-1)
-                        squared_error = ((pred - target) ** 2).sum().item()
-                        absolute_error = (pred - target).abs().sum().item()
-                        
-                        sum_squared_error += squared_error
-                        sum_absolute_error += absolute_error
-                        n_samples += labels.size(0)
-                else:
-                    # Track classification metrics
-                    _, predicted = torch.max(outputs, 1)
-                    correct += (predicted == labels).sum().item()
-                    total += labels.size(0)
-            
-            # Calculate epoch metrics
-            epoch_loss = running_loss / len(trainloader.dataset)
-            
-            if is_regression:
-                # Calculate regression metrics
-                rmse = (sum_squared_error / n_samples) ** 0.5  # Root Mean Squared Error
-                mae = sum_absolute_error / n_samples  # Mean Absolute Error
-                
-                print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}, RMSE: {rmse:.4f}°C, MAE: {mae:.4f}°C")
-                all_metrics.append((epoch_loss, rmse, mae))
-            else:
-                # Calculate classification metrics
-                epoch_accuracy = 100 * correct / total
-                
-                print(f"Epoch {epoch+1}/{epochs}, Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.2f}%")
-                all_metrics.append((epoch_loss, epoch_accuracy))
-                
-        return all_metrics
-
-    def test(self, testloader):
-        """
-        Evaluates the model on test data.
-        Updated to handle both classification and regression tasks.
-        
-        Args:
-            model (nn.Module): Neural network model to evaluate
-            testloader (DataLoader): DataLoader containing test data
-        
-        Returns:
-            tuple: For classification: (average_loss, accuracy)
-                For regression: (average_loss, rmse, mae)
-        """
-        # Check if we're doing regression or classification
-        #is_regression = MODEL_NAME == "TemperatureForecastModel"
-        is_regression = True
-        # Define appropriate loss function
-        if is_regression:
-            criterion = MSELoss(reduction='sum')  # Sum reduction to calculate average later
-        else:
-            criterion = CrossEntropyLoss(reduction='sum')
-        self.model.eval()
-        
-        total_loss = 0.0
-        
-        # For classification
-        total_correct = 0
-        total_samples = 0
-        
-        # For regression
-        if is_regression:
-            sum_squared_error = 0.0
-            sum_absolute_error = 0.0
-        
-        # Fix random seed for reproducibility during evaluation
-        torch.manual_seed(42)
-        
-        # Disable gradient computation for evaluation
-        with torch.no_grad():
-            for inputs, labels in testloader:
-                batch_size = labels.size(0)
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
-                
-                # Forward pass
-                outputs = self.model(inputs)
-                
-                # For regression, ensure outputs and labels have same shape
-                if is_regression:
-                    if outputs.shape != labels.shape:
-                        outputs = outputs.view(labels.shape)
-                
-                # Calculate loss
-                loss = criterion(outputs, labels).item()
-                total_loss += loss
-                
-                if is_regression:
-                    # Calculate regression metrics
-                    pred = outputs.view(-1)
-                    target = labels.view(-1)
-                    squared_error = ((pred - target) ** 2).sum().item()
-                    absolute_error = (pred - target).abs().sum().item()
-                    
-                    sum_squared_error += squared_error
-                    sum_absolute_error += absolute_error
-                    total_samples += batch_size
-                else:
-                    # Calculate classification metrics
-                    _, predicted = torch.max(outputs, 1)
-                    total_correct += (predicted == labels).sum().item()
-                    total_samples += batch_size
-        
-        # Calculate global metrics
-        avg_loss = total_loss / total_samples
-        
-        if is_regression:
-            # Return regression metrics
-            rmse = (sum_squared_error / total_samples) ** 0.5
-            mae = sum_absolute_error / total_samples
-            return avg_loss, rmse, mae
-        else:
-            # Return classification metrics
-            accuracy = total_correct / total_samples
-            return avg_loss, accuracy

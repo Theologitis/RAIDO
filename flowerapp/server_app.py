@@ -19,7 +19,6 @@ from flwr.server.strategy import (DifferentialPrivacyClientSideFixedClipping,
                                   DifferentialPrivacyServerSideFixedClipping)
 from flwr.server.workflow import DefaultWorkflow, SecAggPlusWorkflow
 import torch
-
 from omegaconf import DictConfig
 
 def get_function_from_string(func_name):
@@ -83,7 +82,7 @@ def handle_fit_metrics(metrics: List[Tuple[int,Metrics]])-> Metrics:
 # @lru_cache(maxsize=None) # for heavy loads and multiple users
 def get_strategy(strategy_name: str ,  **strategy_opts):
      # strategies integrated in flower
-    if strategy_name=="FedAvgPlus":
+    if strategy_name=="FedAvgPlus" or strategy_name=="Scaffold":
         module = __import__(f"flowerapp.strategies.{strategy_name}", fromlist=[strategy_name]) # custom strategies from custom_strategy module
     else:
         module = __import__("flwr.server.strategy", fromlist=[strategy_name])
@@ -109,7 +108,7 @@ def main(grid: Grid, context: Context) -> None:
 
     # Initialize global model
     net = get_model(cfg.model.name,**cfg.model.options)
-    pretrained = True if cfg.model.pretrained.lower()=="true" else False
+    pretrained = True if cfg.model.pre_trained.lower()=="true" else False
     if pretrained:
         net.load_state_dict(torch.load(cfg.model.path, weights_only=True))
         params=ndarrays_to_parameters(get_weights(net))
@@ -173,12 +172,11 @@ def main(grid: Grid, context: Context) -> None:
 
     
     # create secure aggregation workflow if set in the configs.
-    sec_agg = True if cfg.secagg.flag.lower() == "true" else False
-    if sec_agg:
+    if cfg.secagg.flag.lower() == "true":
         workflow = DefaultWorkflow(
                 fit_workflow=SecAggPlusWorkflow(
-                num_shares=context.run_config["num-shares"],
-                reconstruction_threshold=context.run_config["reconstruction-threshold"],
+                num_shares=cfg.secagg.num_shares,
+                reconstruction_threshold=cfg.secagg.reconstruction_threshold,
             )
         )
     else:

@@ -13,7 +13,7 @@ import numpy as np
 import os
 import inspect
 import flowerapp.models
-
+from avalanche.models import MlpVAE
 def validate_options(cls, options):
     if not isinstance(options, dict):
         raise TypeError("Options must be a dictionary.")
@@ -21,6 +21,9 @@ def validate_options(cls, options):
     # Get valid parameter names from __init__ (excluding 'self')
     valid_params = inspect.signature(cls.__init__).parameters
     valid_keys = set(valid_params) - {"self"}
+    base = cls.__bases__[0]
+    valid_params = inspect.signature(base.__init__).parameters
+    valid_keys.update(valid_params.keys()-{"self"})
 
     valid_options = {}
     for key, value in options.items():
@@ -53,7 +56,10 @@ def get_model_class(class_name):
 
 def get_model(model_name,**model_options):
     import flowerapp.models  # ensure the module is loaded
-
+    if model_options["type"] == "avalanche":
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        model = MlpVAE((1, 28, 28), nhid=2,device=device)
+        return model
     ModelClass = getattr(flowerapp.models, model_name, None)
     if ModelClass is None:
         raise ValueError(f"Model class '{model_name}' not found in flowerapp.models.")
@@ -66,18 +72,17 @@ def get_model(model_name,**model_options):
     
     return model
 
-def get_optimizer(optim_name,**optim_options):
+def get_optimizer(optim_name,parameters,lr):
     import flowerapp.models  # ensure the module is loaded
 
     optimClass = getattr(torch.optim, optim_name, None)
     if optimClass is None:
-        raise ValueError(f"Model class '{optim_name}' not found in flowerapp.models.")
+        raise ValueError(f"Optimizer class '{optim_name}' not found in torch.optim.")
     
     try:
-        optimizer = optimClass(**optim_options)
+        optimizer = optimClass(parameters,lr)
     except TypeError as e:
-        raise ValueError(f"Error instantiating model '{optim_name}': {e}")
-    
+        raise ValueError(f"Error instantiating optimizer '{optim_name}': {e}")
     return optimizer
 
 def get_criterion(criterion_name,**criterion_options):
@@ -85,7 +90,7 @@ def get_criterion(criterion_name,**criterion_options):
 
     criterionClass = getattr(torch.nn, criterion_name, None)
     if criterionClass is None:
-        raise ValueError(f"Model class '{criterion_name}' not found in flowerapp.models.")
+        raise ValueError(f"Criterion class '{criterion_name}' not found in torch.nn.")
     
     try:
         criterion = criterionClass(**criterion_options)
@@ -93,6 +98,34 @@ def get_criterion(criterion_name,**criterion_options):
         raise ValueError(f"Error instantiating model '{criterion_name}': {e}")
     
     return criterion
+
+def check_compatibility(model: torch.nn.Module, dataloader: DataLoader):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()  # Set to eval mode to avoid training-specific issues (e.g., dropout)
+
+    try:
+        # Get a single batch
+        batch = next(iter(dataloader))
+
+        if isinstance(batch, dict):
+                inputs, labels = tuple(batch.values())
+        else:
+                inputs, labels = batch
+
+        # Forward pass through the model
+        inputs= inputs.to(device)
+        with torch.no_grad():
+            outputs = model(inputs)
+
+        print("✅ Model is compatible with DataLoader batch format.")
+        print(f"Input shape: {inputs.shape}, Output shape: {outputs.shape}")
+        return True
+
+    except Exception as e:
+        print("❌ Incompatibility detected:")
+        print(e)
+        return False
 
 class CIFAR10Custom(Dataset):
     """
