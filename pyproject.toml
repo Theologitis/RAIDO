@@ -43,13 +43,13 @@ model.options.input_dim = 400       # cifar 400 , timeseries 7
 model.options.output_dim = 10
 model.pre_trained = "false"
 model.path = "output/global_model.pth"
-train.epochs = 1
+train.epochs = 2
 train.lr = 0.0316
 train.batch_size = 128
 # Strategy Options
 strategy.name = "FedYogi"
-strategy.options.fraction_fit = 1.0
-strategy.options.fraction_evaluate = 1.0
+strategy.options.fraction_fit = 0.2
+strategy.options.fraction_evaluate = 0.5
 strategy.options.min_fit_clients = 2
 strategy.options.min_evaluate_clients = 2
 strategy.options.min_available_clients = 2
@@ -85,30 +85,31 @@ strategy.FedXgbCyclic.options.num_evaluation_clients = ""
 strategy.FedXgbCyclic.options.num_fit_clients = ""
 # Parameters for the Differential Privacy
 dp.flag = "false"
-dp.side = "server"
+dp.side = "client"
 dp.type = "adaptive"
 dp.fixed.noise_multiplier = 0.1
 dp.fixed.clipping_norm = 0.5
-dp.fixed.num_sampled_clients = 2
+dp.fixed.num_sampled_clients = 10
 dp.adaptive.noise_multiplier = 0.1
-dp.adaptive.num_sampled_clients =2
+dp.adaptive.num_sampled_clients =10
 dp.adaptive.initial_clipping_norm= 0.1
 dp.adaptive.target_clipped_quantile = 0.5
 dp.adaptive.clip_norm_lr = 0.2
 dp.adaptive.clipped_count_stddev = ""   # optional
-num-sampled-clients = 2
+
 
 # Parameters for the SecAgg+ protocol
 secagg.flag = "false"
-secagg.num_shares = 10
+secagg.num_shares = 5
 secagg.reconstruction_threshold = 2
-
 
 [tool.flwr.federations]
 default = "local-simulation"
 
 [tool.flwr.federations.local-simulation]
-options.num-supernodes = 2
+options.num-supernodes = 10
+options.backend.client-resources.num-cpus = 1
+options.backend.client-resources.num-gpus = 0.25
 
 [tool.flwr.federations.local-deployment]
 address = "superlink:9093"

@@ -14,7 +14,7 @@ services:
 
   # create a ServerApp service
   serverapp-1:
-    image: flwr_serverapp:0.0.5
+    image: flwr_serverapp:0.0.4
     command:
       - --insecure
       - --serverappio-api-address
@@ -112,7 +112,7 @@ services:
 
   # create two ClientApp services
   clientapp-1:
-    image: flwr_clientapp:0.0.5
+    image: flwr_clientapp:0.0.4
     volumes:
       - "../client_1/data:/app/data"  # Private Dataset client 1
     command:
@@ -139,7 +139,7 @@ services:
       - supernode-1
 
   clientapp-2:
-    image: flwr_clientapp:0.0.5
+    image: flwr_clientapp:0.0.4
     volumes:
       - "../client_2/data:/app/data"  # Private Dataset client 2
     command:

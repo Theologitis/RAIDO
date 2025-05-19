@@ -43,7 +43,8 @@ class Scaffold(FedAvg):
         array_list = [arr.tolist() for arr in self.server_control_variate]
         config["server_control_variate"] = json.dumps(array_list)
         fit_ins = FitIns(parameters, config)
-
+        for i, arr in enumerate(self.server_control_variate):
+            print(f"Index {i}: shape = {arr.shape}, type = {type(arr)}")
         # Sample clients
         sample_size, min_num_clients = self.num_fit_clients(
             client_manager.num_available()
@@ -72,6 +73,8 @@ class Scaffold(FedAvg):
         #         for _, fit_res in results
         #     ]
         #     aggregated_ndarrays = aggregate(weights_results)
+        print(type(results))
+        for res in results: print(type(res))
         weights_results = [
                 (parameters_to_ndarrays(fit_res.parameters))
                 for _, fit_res in results
@@ -123,7 +126,7 @@ def aggregate_controls(
 
 def scaffold_aggregate(
     current_weights: NDArrays,
-    results: List[Tuple[NDArrays, int]],
+    results: List[NDArrays],
     eta_g: float,
 ) -> NDArrays:
     """SCAFFOLD aggregation:

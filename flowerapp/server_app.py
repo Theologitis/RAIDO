@@ -19,7 +19,9 @@ from flwr.server.strategy import (DifferentialPrivacyClientSideFixedClipping,
                                   DifferentialPrivacyServerSideFixedClipping)
 from flwr.server.workflow import DefaultWorkflow, SecAggPlusWorkflow
 import torch
+
 from omegaconf import DictConfig
+import numpy as np
 
 def get_function_from_string(func_name):
     """Dynamically get a function from its name."""
@@ -37,6 +39,17 @@ def get_function_from_string(func_name):
         return getattr(module, function_name)
     except (ImportError, AttributeError, ValueError):
         raise ValueError(f"Function '{func_name}' could not be found or imported.")
+    
+def weighted_average(metrics: List[Tuple[int, Metrics]]) -> Metrics:
+    total_examples = sum(weight for weight, _ in metrics)
+    return {
+        k: sum(examples * metric[k] for examples, metric in metrics) / total_examples
+        for k in metrics[0][1].keys()
+    }
+
+def average(metrics: List[Tuple[int,Metrics]]) -> Metrics:
+    return {k: np.mean([metric[k] for _, metric in metrics]) for k in metrics[0][1].keys()}
+
 
 def weighted_average(metrics):
     """ Function that calculates weighted average of metrics, to be passed at: evaluate_metrics_aggregation_fn """
