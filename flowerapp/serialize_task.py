@@ -1,7 +1,9 @@
 # serialize_task.py
 import cloudpickle
 import torchvision.models as models
+
 fds=None
+
 def make_task():
     # Define the class locally so it's embedded into the pickle
     import torch
