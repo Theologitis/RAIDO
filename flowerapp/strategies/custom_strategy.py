@@ -6,7 +6,7 @@ from flwr.server.strategy import Strategy , FedAvg
 from datetime import datetime
 import torch
 import flowerapp.models
-from flowerapp.utils import get_model, set_weights
+from flowerapp.utils import get_model , set_weights
 import json        
 import os
 import threading

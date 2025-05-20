@@ -51,11 +51,14 @@ def average(metrics: List[Tuple[int,Metrics]]) -> Metrics:
     return {k: np.mean([metric[k] for _, metric in metrics]) for k in metrics[0][1].keys()}
 
 
-def weighted_average(metrics):
-    """ Function that calculates weighted average of metrics, to be passed at: evaluate_metrics_aggregation_fn """
-    accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
-    examples = [num_examples for num_examples, _ in metrics]
-    return {"accuracy": sum(accuracies) / sum(examples) }
+# def weighted_average(metrics):
+#     """ Function that calculates weighted average of metrics, to be passed at: evaluate_metrics_aggregation_fn """
+#     accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
+#     examples = [num_examples for num_examples, _ in metrics]
+#     return {"accuracy": sum(accuracies) / sum(examples) }
+
+
+
 
 def personalized_metrics(metrics: List[Tuple[int,Metrics]])-> Metrics:
     """ A function to run evaluation on all clients and print the results of each client to be passed at: evaluate_metrics_aggregation_fn """

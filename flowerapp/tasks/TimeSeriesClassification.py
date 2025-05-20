@@ -191,7 +191,7 @@ class TimeSeriesClassification(Task):
         accuracy = total_correct / total_samples
 
         print(f"[Classification Test] Loss: {avg_loss:.4f} | Accuracy: {accuracy * 100:.2f}%")
-        return avg_loss, accuracy
+        return avg_loss, {'accuracy': accuracy}
     
     
 class ExcelTimeSeriesDataset(Dataset):

@@ -183,5 +183,5 @@ class Forecasting(Task):
         mae = sum_absolute_error / total_samples
 
         print(f"[Regression Test] Loss: {avg_loss:.4f} | RMSE: {rmse:.4f}°C | MAE: {mae:.4f}°C")
-        return avg_loss, rmse
+        return avg_loss, {"rmse":rmse,"mae":mae,"avg_loss":avg_loss}
     

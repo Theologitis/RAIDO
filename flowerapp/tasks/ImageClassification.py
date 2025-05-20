@@ -190,7 +190,7 @@ class ImageClassification(Task):
 
         accuracy = total_correct / len(testloader.dataset)
         avg_loss = total_loss / len(testloader)
-        return avg_loss, accuracy
+        return avg_loss, {"accuracy":accuracy}
 # import cloudpickle
 # import torchvision.models as models
 # model = models.resnet18(pretrained=True)

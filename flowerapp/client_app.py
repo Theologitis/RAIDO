@@ -1,7 +1,5 @@
 from flwr.client import ClientApp, NumPyClient
-from flwr.common import Context, ConfigsRecord , ndarray_to_bytes , bytes_to_ndarray
-from flwr.client.mod import fixedclipping_mod, secaggplus_mod , adaptiveclipping_mod
-import random, json
+from flwr.common import Context
 import torch
 from flowerapp.utils import (
     get_weights,
@@ -10,12 +8,9 @@ from flowerapp.utils import (
     drop_empty_keys,
     check_compatibility
 )
-from flwr.common import ArrayRecord
-import numpy as np
 from flwr.common.config import unflatten_dict
 from omegaconf import DictConfig
-import json
-import os
+from flowerapp.client import ScaffoldClient, FedCLClient
 
 #os.environ["HF_DATASETS_CACHE"] = "/home/youruser/.cache/huggingface/datasets" # set this environment variable before execution to cache downloaded dataset
 
@@ -45,9 +40,9 @@ class FlowerClient(NumPyClient):
     def evaluate(self, parameters, config):
         print('Evaluating...')
         set_weights(self.task.model, parameters)
-        loss, accuracy = self.task.test(self.testloader)
+        loss, metrics = self.task.test(self.testloader)
         # print(f'Accuracy:{100*accuracy:.2f}%')
-        return loss, len(self.testloader), {"accuracy": accuracy}
+        return loss, len(self.testloader), metrics
     
 import cloudpickle
 from flowerapp.tasks.ImageClassification import ImageClassification
@@ -77,100 +72,7 @@ def client_fn(context: Context):
     #train_loader, test_loader = task.load_data('data',batch_size)
     epochs = cfg.train.epochs # epochs
     lr = cfg.train.lr # learning rate
-    
     return FlowerClient(net, train_loader, test_loader, epochs, lr, device, context, task).to_client()
 
     
 app = ClientApp(client_fn=client_fn)
-
-class ScaffoldClient(NumPyClient):
-    " Default class of Flower: implements client logic, inherits from NumpyClient"
-
-    def __init__(self, net, trainloader, testloader,epochs,lr,device,context: Context,task):
-        self.context=context
-        self.net = net
-        self.trainloader = trainloader
-        self.testloader = testloader
-        self.local_epochs = epochs
-        self.device= device
-        self.lr = lr
-        self.task = task
-        self.client_state = context.state
-
-        if "control_variate" not in self.client_state:
-            params=get_weights(self.task.model)
-            self.client_state["control_variate"] = ArrayRecord([np.zeros_like(p) for p in params])
-
-
-    def fit(self, parameters, config):
-        print('Training...')
-        set_weights(self.task.model, parameters) # set new global model as task's model
-        # update parameters if passed from strategy in config:
-        self.lr = config.get("lr",self.lr) # for FedAvgPlus
-        self.local_epochs = config.get("epochs",self.local_epochs) # for FedAvgPlus
-        array_list = json.loads(config["server_control_variate"]) # For Scaffold
-        server_control_variate = [np.array(arr) for arr in array_list]
-        _,all_metrics = self.task.train_scaffold(self.trainloader, 5,self.lr,server_control_variate,self.client_state["control_variate"].to_numpy_ndarrays()) # train on local train dataset
-        client_delta = [a - b for a, b in zip(all_metrics,self.client_state["control_variate"].to_numpy_ndarrays())]
-        #print(f"max delta in clinet{max([delta.max() for delta in client_delta])}")
-        self.client_state["control_variate"] = ArrayRecord(all_metrics)
-        array_list = [arr.tolist() for arr in client_delta]
-        print(array_list.shape)
-        all_metrics_str = json.dumps(array_list)
-        #for i, arr in enumerate(all_metrics):
-            #print(f"Control variate shape [{i}]: {arr.shape}, dtype: {arr.dtype}")
-        return get_weights(self.task.model), len(self.trainloader), {"control_variate":all_metrics_str}
-
-    def evaluate(self, parameters, config):
-        print('Evaluating...')
-        set_weights(self.task.model, parameters) # set new global model as task's model
-        loss, accuracy = self.task.test(self.testloader)  # test on local test dataset
-        #print(f'Accuracy:{100*accuracy:.2f}%')
-        return loss, len(self.testloader), {"accuracy": accuracy}
-    
-class FedCLClient(NumPyClient):
-    """ A Client for FedCL strategy"""
-
-    def __init__(self, net, trainloader, testloader,epochs,lr,device,context: Context,task):
-        self.context=context
-        self.net = net
-        self.trainloader = trainloader
-        self.testloader = testloader
-        self.local_epochs = epochs
-        self.device= device
-        self.lr = lr
-        self.task = task
-        self.client_state = context.state
-
-        if "control_variate" not in self.client_state:
-            params=get_weights(self.task.model)
-            self.client_state["control_variate"] = ArrayRecord([np.zeros_like(p) for p in params])
-
-
-    def fit(self, parameters, config):
-        print('Training...')
-        set_weights(self.task.model, parameters) # set new global model as task's model
-        # update parameters if passed from strategy in config:
-        self.lr = config.get("lr",self.lr) # for FedAvgPlus
-        self.local_epochs = config.get("epochs",self.local_epochs) # for FedAvgPlus
-        proximal_mu = config.get("proximal_mu", 0.0) # for FedProx
-        array_list = json.loads(config["server_control_variate"]) # For Scaffold
-        server_control_variate = [np.array(arr) for arr in array_list]
-        _,all_metrics = self.task.train(self.trainloader, self.local_epochs,self.lr,proximal_mu,server_control_variate,self.client_state["control_variate"].to_numpy_ndarrays()) # train on local train dataset
-        client_delta = [a - b for a, b in zip(all_metrics,self.client_state["control_variate"].to_numpy_ndarrays())]
-        print(f"max delta in clinet{max([delta.max() for delta in client_delta])}")
-        self.client_state["control_variate"] = ArrayRecord(all_metrics)
-        array_list = [arr.tolist() for arr in client_delta]
-        all_metrics_str = json.dumps(array_list)
-        for i, arr in enumerate(all_metrics):
-            print(f"Control variate shape [{i}]: {arr.shape}, dtype: {arr.dtype}")
-        return get_weights(self.task.model), len(self.trainloader), {"control_variate":all_metrics_str}
-
-    def evaluate(self, parameters, config):
-        print('Evaluating...')
-        set_weights(self.task.model, parameters) # set new global model as task's model
-        loss, accuracy = self.task.test(self.testloader)  # test on local test dataset
-        print(f'Accuracy:{100*accuracy:.2f}%')
-        return loss, len(self.testloader), {"accuracy": accuracy}
-    
-    
